@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insert Procure Data</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Insert Procure Data</h2>
+        <form action="/insert_procure" method="POST">
+            <div class="form-group">
+                <label for="entity_type">Entity Type</label>
+                <input type="text" class="form-control" id="entity_type" name="entity_type" placeholder="Enter entity type" required>
+            </div>
+            <div class="form-group">
+                <label for="procurement_type">Procurement Type</label>
+                <select class="form-control" id="procurement_type" name="procurement_type" required>
+                    <option value="">Select procurement type</option>
+                    <option value="barang">Barang</option>
+                    <option value="license">License</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
+
+    <!-- Bootstrap JS and dependencies (for optional use) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js" integrity="sha384-f5O2s7eGH7mDl9EC0JHU9a8y1G4fMMjZfDpOPqj/OgHJif+XaGtl8Iu/NuQgVC6+" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8sh+EmmAd/yYXu2rwJH/7RS2doXsFtKk0k8kk2" crossorigin="anonymous"></script>
+</body>
+</html>
