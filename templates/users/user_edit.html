@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+
+<!-- INHERETENCE SIDEBAR -->
+{% block sidebar %}
+<nav class="mt-2">
+  <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+    <!-- Add icons to the links using the .nav-icon class
+         with font-awesome or any other icon font library -->
+    <li class="nav-item menu-open">
+      <ul class="nav nav-treeview">
+        <li class="nav-item">
+          <a href="{{ url_for('index') }}" class="nav-link">
+            <i class="nav-icon fas fa-home"></i>
+            <p>Home</p>
+          </a>
+        </li>
+        
+    <li class="nav-item">
+      <a href="#" class="nav-link">
+        <i class="nav-icon fas fa-edit"></i>
+        <p>
+          Forms
+          <i class="fas fa-angle-left right"></i>
+        </p>
+      </a>
+      <ul class="nav nav-treeview">
+        <li class="nav-item">
+          <a href="pages/forms/general.html" class="nav-link">
+            <i class="far fa-circle nav-icon"></i>
+            <p>General Elements</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="pages/forms/advanced.html" class="nav-link">
+            <i class="far fa-circle nav-icon"></i>
+            <p>Advanced Elements</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="pages/forms/editors.html" class="nav-link">
+            <i class="far fa-circle nav-icon"></i>
+            <p>Editors</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="pages/forms/validation.html" class="nav-link">
+            <i class="far fa-circle nav-icon"></i>
+            <p>Validation</p>
+          </a>
+        </li>
+      </ul>
+    </li>
+    <li class="nav-header">ADMIN MENU</li>
+    <li class="nav-item">
+      <a href="pages/calendar.html" class="nav-link">
+        <i class="nav-icon far fa-calendar-alt"></i>
+        <p>
+          Calendar
+          <span class="badge badge-info right">2</span>
+        </p>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{{url_for('user_list')}}" class="nav-link active">
+        <i class="nav-icon far fa-user"></i>
+        <p>
+          Users
+        </p>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="pages/kanban.html" class="nav-link">
+        <i class="nav-icon fas fa-columns"></i>
+        <p>
+          Kanban Board
+        </p>
+      </a>
+    </li>
+    <li class="nav-header">OFFICER MENU</li>
+    <li class="nav-item">
+      <a href="pages/calendar.html" class="nav-link">
+        <i class="nav-icon far fa-calendar-alt"></i>
+        <p>
+          Calendar
+          <span class="badge badge-info right">2</span>
+        </p>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="pages/gallery.html" class="nav-link">
+        <i class="nav-icon far fa-image"></i>
+        <p>
+          Users
+        </p>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="pages/kanban.html" class="nav-link">
+        <i class="nav-icon fas fa-columns"></i>
+        <p>
+          Kanban Board
+        </p>
+      </a>
+    </li>
+  </ul>
+</nav>
+<!-- /.sidebar-menu -->
+{% endblock %}
+<!--END INHERETENCE SIDEBAR -->
+
+{% block content %}
+
+<div class="content-wrapper">
+    <!-- Content Header (Page header) -->
+    <section class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1>User Management</h1>
+          </div>
+          <div class="col-sm-6">
+            <ol class="breadcrumb float-sm-right">
+              <li class="breadcrumb-item"><a href="#">Home</a></li>
+              <li class="breadcrumb-item active">Register User</li>
+            </ol>
+          </div>
+        </div>
+      </div><!-- /.container-fluid -->
+    </section>
+
+    <!-- Main content -->
+    <section class="content">
+      <div class="container-fluid">
+        <div class="row">
+          <!-- left column -->
+          <div class="col-md-6">
+            <!-- general form elements -->
+            <div class="card card-default">
+              <div class="card-header">
+                <h3 class="card-title">Edit User</h3>
+              </div>
+              <!-- /.card-header -->
+              <!-- form start -->
+              <form action="{{ url_for('user_edit', id=user[0]) }}" method="POST">
+                <div class="card-body">
+                  <div class="form-group">
+                    <label for="exampleInputEmail1">Username</label>
+                    <input type="text" class="form-control" id="username" name="username" value="{{ user[1] }}" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="exampleInputEmail1">Email address</label>
+                    <input type="email" class="form-control" id="email" name="email" value="{{ user[2] }}" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="exampleInputPassword1">Role</label>
+                    <input type="text" class="form-control" id="level" name="level" value="{{ user[3] }}" required readonly>
+                  </div>
+                  <div class="mb-3">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Change Role</label> 
+                                <select class="form-control select2" name="level" id="level" style="width: 100%;" required>
+                                <option >Officer</option>
+                                <option >Admin</option>
+                                </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /.card-body -->
+
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-default">Submit</button>
+                </div>
+            </form>
+        </div>
+        <!-- /.card-body -->
+      </div>
+      <!-- /.card -->
+    </div>
+    <!--/.col (right) -->
+  </div>
+  <!-- /.row -->
+</div><!-- /.container-fluid -->
+</section>
+<!-- /.content -->
+</div>
+<!-- /.content-wrapper -->
+
+<!-- Toastr Notifications -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    toastr.{{ category }}("{{ message | safe }}");
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    });
+</script>
+  {% endblock %}
