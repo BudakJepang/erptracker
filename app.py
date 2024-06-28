@@ -135,7 +135,7 @@ def user_list():
     return render_template('users/user_list.html', users=users)
 
 
-# registration
+# registration and access user
 @app.route('/register', methods=('GET','POST'))
 @login_required
 def register():
