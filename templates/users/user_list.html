@@ -118,7 +118,7 @@
       <div class="container-fluid">
         <div class="row mb-2">
           <div class="col-sm-6">
-            <h1>Users</h1>
+            <h1>Admin</h1>
           </div>
           <div class="col-sm-6">
             <ol class="breadcrumb float-sm-right">
@@ -131,7 +131,6 @@
     </section>
 
     <!-- Main content -->
-    <!-- Main content -->
     <section class="content">
         <div class="container-fluid">
           <div class="row">
@@ -139,9 +138,12 @@
               <div class="card">
                 <div class="card-header">
                   <h3 class="card-title"></h3>
-                  <button type="button" class="btn btn-default" data-toggle="modal" data-target="#modal-default">
-                    Add User
-                  </button>
+                  <a class="btn btn-app bg-default" data-toggle="modal" data-target="#modal-default-user">
+                    <i class="fas fa-users"></i> Add Users
+                    </a>
+                    <a class="btn btn-app bg-default" data-toggle="modal" data-target="#modal-default-menu">
+                      <i class="fas fa-server"></i> Add Menu
+                      </a>
                 </div>
                 <!-- /.card-header -->
                 <div class="card-body">
@@ -187,8 +189,8 @@
   </div>
   <!-- /.content-wrapper -->
 
-<!--DEFAULT MODAL -->
-<div class="modal fade" id="modal-default">
+<!--DEFAULT CREATE USER MODAL -->
+<div class="modal fade" id="modal-default-user">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -224,6 +226,9 @@
                   </div>
               </div>
           </div>
+          <div class="form-group">
+            <label>Access Menu</label>
+            <div id="menu-checkboxes">
         <!--
         <label for="exampleInputPassword1">Level</label>
         <div class="form-check">
@@ -245,7 +250,40 @@
     <!-- /.modal-content -->
   </div>
 </div>
-<!--END DEFAULT MODAL -->
+<!--END USER DEFAULT MODAL -->
+
+<!--DEFAULT CREATE MENU MODAL -->
+<div class="modal fade" id="modal-success-menu">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">Add Menu</h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <form action="{{ url_for('register') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="exampleInputEmail1">Nama Category</label>
+          <input type="text" class="form-control" id="username" placeholder="Masukkan Username" name="username" autocomplete="off" required>
+        </div>
+        <div class="form-group">
+          <label for="exampleInputEmail1">Nama Menu</label>
+          <input type="text" class="form-control" id="username" placeholder="Masukkan Username" name="username" autocomplete="off" required>
+        </div>
+        <div class="mb-3">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+    </div>
+    <!-- /.modal-content -->
+  </div>
+</div>
+<!--END USER MENU MODAL -->
 
  <!-- DELETE MODAL -->
  <div class="modal fade" id="modal-danger" tabindex="-1" role="dialog" aria-labelledby="modal-danger-label" aria-hidden="true">
@@ -309,5 +347,30 @@
     modal.find('#delete-form').attr('action', formAction);
   });
 </script>
+
+<!-- jQuery for get data from db menu-->
+<script type="text/javascript">
+$(document).ready(function() {
+    // Ketika modal dibuka
+    $('#modal-default').on('show.bs.modal', function() {
+        $.ajax({
+            url: "{{ url_for('get_menus') }}",
+            type: 'GET',
+            success: function(menus) {
+                let menuCheckboxes = '';
+                menus.forEach(function(menu) {
+                    menuCheckboxes += `
+                    <div class="custom-control custom-checkbox">
+                        <input class="custom-control-input" type="checkbox" id="menu${menu[0]}" name="menus" value="${menu[0]}">
+                        <label for="menu${menu[0]}" class="custom-control-label">${menu[1]}</label>
+                    </div>`;
+                });
+                $('#menu-checkboxes').html(menuCheckboxes);
+            }
+        });
+    });
+});
+</script>
+
 {% endblock %}
 <!-- END INHERETENCE CONTENT -->

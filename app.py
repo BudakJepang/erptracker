@@ -1,5 +1,5 @@
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_mysqldb import MySQL
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime, timedelta
@@ -121,7 +121,7 @@ def logout():
 
 
 # ================================================================================================================
-# USERS ROUTE ====================================================================================================
+# USERS & REGISTER ROUTE =========================================================================================
 # ================================================================================================================
 # list user
 @app.route('/user_list')
@@ -135,20 +135,20 @@ def user_list():
     return render_template('users/user_list.html', users=users)
 
 
-# registration
+# registration and access user
 @app.route('/register', methods=('GET','POST'))
 @login_required
 def register():
-    if request.method == 'POST':
+     if request.method == 'POST':
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
         level = request.form['level']
-        
+        selected_menus = request.form.getlist('menus')  # ambil daftar menu yang dipilih dari view html
+
         cursor = mysql.connection.cursor()
         cursor.execute('SELECT username, email FROM user_accounts WHERE username=%s OR email=%s', (username, email))
         account = cursor.fetchone()
-        print(account)
         
         if account is None:
             current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -157,6 +157,16 @@ def register():
                 VALUES (%s, %s, %s, %s, %s, %s)
             ''', (username, email, generate_password_hash(password), level, current_timestamp, current_timestamp))
             mysql.connection.commit()
+            user_id = cursor.lastrowid  # get ID user yang baru saja dibuat
+
+            # simpan data menu yang dipilih ke tabel access_users
+            for menu_id in selected_menus:
+                cursor.execute('''
+                    INSERT INTO access_users (user_id, menu_id, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s)
+                ''', (user_id, menu_id, current_timestamp, current_timestamp))
+            
+            mysql.connection.commit()
             cursor.close()
             flash('Registration Success', 'success')
             return redirect(url_for('user_list'))
@@ -164,8 +174,7 @@ def register():
             cursor.close()
             flash('Username or Email already exists', 'danger')
             return redirect(url_for('user_list'))
-    return render_template('users/user_list.html')
-
+     return render_template('users/user_list.html')
 
 # change password users not admin
 @app.route('/user_change_password/<int:id>', methods=['GET', 'POST'])
@@ -251,6 +260,14 @@ def delete_user(id):
 # END USERS ROUTE ================================================================================================
 # ================================================================================================================
 
+@app.route('/get_menus', methods=['GET'])
+@login_required
+def get_menus():
+    cursor = mysql.connection.cursor()
+    cursor.execute('SELECT id, menu_name FROM menu')
+    menus = cursor.fetchall()
+    cursor.close()
+    return jsonify(menus)  # Kembalikan data dalam format JSON
 
 
 
@@ -315,6 +332,8 @@ def insert_form():
 
 
 
+if __name__ == '__main__':
+    app.run(host='10.1.1.18', port=5000, debug=True)
 
 
 
@@ -416,6 +435,3 @@ def insert_form():
 # def user_edit():
 #     return render_template('users/user_edit.html')
 # =================================================================================================================
-
-if __name__ == '__main__':
-    app.run(host='10.1.1.18', port=5000, debug=True)
