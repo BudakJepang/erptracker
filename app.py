@@ -1,11 +1,14 @@
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, abort
 from flask_mysqldb import MySQL
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime, timedelta
 import pytz
 import random
 import hashlib
+# from modules.auth import auth_blueprint
+# from modules.home import home_blueprint
+# from modules.user import user_blueprint
 
 def hash_id(user_id):
     return hashlib.sha256(str(user_id).encode()).hexdigest()
@@ -16,6 +19,8 @@ def convert_time_to_wib(dtobject):
     tz_aware = utc.localize(dtobject)
     localtime = tz_aware.astimezone(tz)
     return localtime
+
+
 
 # ================================================================================================================
 # GLOBAL PARAMETER ===============================================================================================
@@ -28,6 +33,11 @@ app = Flask(__name__)
 #     SESSION_COOKIE_HTTPONLY=True,
 # )
 app.permanent_session_lifetime = timedelta(minutes=30)
+
+# Register Blueprints
+# app.register_blueprint(auth_blueprint)
+# app.register_blueprint(home_blueprint)
+# app.register_blueprint(user_blueprint)
 # ================================================================================================================
 # END GLOBAL PARAMETER ===========================================================================================
 # ================================================================================================================
@@ -67,6 +77,77 @@ def login_required(f):
 @app.route('/auth')
 def auth():
     return render_template('auth/login.html')
+
+def check_access(menu_id):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            user_id = session.get('id')
+            if not user_id:
+                return redirect(url_for('login'))
+
+            cursor = mysql.connection.cursor()
+            cursor.execute('SELECT 1 FROM access_users WHERE user_id = %s AND menu_id = %s', (user_id, menu_id))
+            access = cursor.fetchone()
+            cursor.close()
+
+            if not access:
+                flash('You do not have access to this page', 'danger')
+                return abort(403)
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+def get_menu_data(user_id):
+    cursor = mysql.connection.cursor()
+    cursor.execute('''
+        SELECT 
+        cat.id, cat.category_name,
+        m.menu_name 
+        FROM category_menu as cat
+        LEFT JOIN menu AS m on cat.id = m.id_category
+        LEFT JOIN access_users AS au on m.id = au.menu_id 
+        WHERE au.user_id = %s
+    ''', (user_id,))
+    data = cursor.fetchall()
+    cursor.close()
+
+    menu_data = {}
+    for row in data:
+        category_id = row[0]
+        category_name = row[1]
+        item_name = row[2]
+
+        if category_name not in menu_data:
+            menu_data[category_name] = []
+        
+        if item_name:
+            menu_data[category_name].append(item_name)
+
+    return menu_data
+
+@app.context_processor
+def inject_menu_data():
+    if 'id' in session:
+        menu_data = get_menu_data(session['id'])
+    else:
+        menu_data = {}
+    return dict(menu_data=menu_data)
+
+# mengambil kategori dari database
+def get_categories():
+    cursor = mysql.connection.cursor()
+    cursor.execute('SELECT id, category_name FROM category_menu')
+    categories = cursor.fetchall()
+    cursor.close()
+    return categories
+
+# context global sehingga bisa diakses dari semua template
+@app.context_processor
+def inject_categories():
+    categories = get_categories()
+    return dict(categories=categories)
+
 
 # index / home page
 @app.route('/')
@@ -126,6 +207,7 @@ def logout():
 # list user
 @app.route('/user_list')
 @login_required
+@check_access(menu_id=1)
 def user_list():
     cursor = mysql.connection.cursor()
     cursor.execute('SELECT id, username, email, level, created_at FROM user_accounts')
@@ -246,8 +328,8 @@ def user_edit():
     return render_template('users/user_edit.html')
 
 # delete user
-@login_required
 @app.route('/delete_user/<int:id>', methods=['POST'])
+@login_required
 def delete_user(id):
     cursor = mysql.connection.cursor()
     cursor.execute('DELETE FROM user_accounts WHERE id = %s', (id,))
@@ -268,6 +350,19 @@ def get_menus():
     menus = cursor.fetchall()
     cursor.close()
     return jsonify(menus)  # Kembalikan data dalam format JSON
+
+
+# @app.route('/category_menu')
+# @login_required
+# def category_menu():
+#     cursor = mysql.connection.cursor()
+#     cursor.execute('SELECT id, category_name FROM category_menu')
+#     categories = cursor.fetchall()
+#     cursor.close()
+#         # Logging for debugging
+#     print("Categories fetched from database: ", categories)
+#     return render_template('users/user_list.html', categories=categories)
+
 
 
 
@@ -333,7 +428,7 @@ def insert_form():
 
 
 if __name__ == '__main__':
-    app.run(host='10.1.1.18', port=5000, debug=True)
+    app.run(host='10.1.1.8', port=5000, debug=True)
 
 
 

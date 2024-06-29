@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AdminLTE 3 | Dashboard</title>
+  <title>ERP Tracker</title>
 
   <!-- Google Font: Source Sans Pro -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
@@ -144,21 +144,33 @@
         </div>
       </div>
 
-      <!-- SidebarSearch Form -->
-      <div class="form-inline">
-        <div class="input-group" data-widget="sidebar-search">
-          <input class="form-control form-control-sidebar" type="search" placeholder="Search" aria-label="Search">
-          <div class="input-group-append">
-            <button class="btn btn-sidebar">
-              <i class="fas fa-search fa-fw"></i>
-            </button>
-          </div>
-        </div>
-      </div>
-
       <!-- Sidebar Menu -->
-      {% block sidebar %}
-      {% endblock %}
+      <nav class="mt-2">
+        <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+          <!-- Add icons to the links using the .nav-icon class
+               with font-awesome or any other icon font library -->
+          <li class="nav-item menu-open">
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ url_for('index') }}" class="nav-link">
+                  <i class="nav-icon fas fa-home"></i>
+                  <p>HOME</p>
+                </a>
+              </li>
+            {% for category, items in menu_data.items() %}
+            <li class="nav-header">{{ category }}</li>
+            {% for item in items %}
+            <li class="nav-item">
+                <a href="{{ url_for('user_list') }}" class="nav-link">
+                    <i class="nav-icon far fa-circle"></i>
+                    <p>{{ item }}</p>
+                </a>
+            </li>
+            {% endfor %}
+            {% endfor %}
+
+        </ul>
+      </nav>
       <!-- /.sidebar-menu -->
     </div>
     <!-- /.sidebar -->
