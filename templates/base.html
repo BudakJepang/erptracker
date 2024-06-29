@@ -76,8 +76,9 @@
               <span class="sr-only">Toggle Dropdown</span>
             </button>
           <div class="dropdown-menu" role="menu">
-            <a class="dropdown-item" href="{{url_for('logout')}}">Logout</a>
-            <a class="dropdown-item" href="{{url_for('user_change_password', id=session.id)}}">User Settings</a>
+            <a class="dropdown-item" href="{{url_for('auth.logout')}}">Logout</a>
+            <a class="dropdown-item" href="{{url_for('user.user_change_password', id=session.id)}}">User Settings</a>
+             <!-- USER CHANGE PASSWORD HERE-->
           </div>
       </li>
       <!-- LOG OUT BUTTON -->
@@ -161,7 +162,7 @@
             <li class="nav-header">{{ category }}</li>
             {% for item in items %}
             <li class="nav-item">
-                <a href="{{ url_for('user_list') }}" class="nav-link">
+                <a href="{{ url_for('user.user_list') }}" class="nav-link">
                     <i class="nav-icon far fa-circle"></i>
                     <p>{{ item }}</p>
                 </a>

@@ -1,23 +1,18 @@
-from functools import wraps
-from flask import Flask, Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
-from flask_mysqldb import MySQL
+from flask import Blueprint, redirect, render_template, request, session, url_for, flash, jsonify
 from werkzeug.security import check_password_hash, generate_password_hash
-from datetime import datetime, timedelta
-import pytz
-import random
-import hashlib
-from functools import wraps
+from modules.time import convert_time_to_wib
+from datetime import datetime, timedelta, timezone
+from modules.decorator import login_required, check_access
 
 
+# BLUEPRINT AUTH VARIABLE
 user_blueprint = Blueprint('user', __name__)
-# ================================================================================================================
-# USERS & REGISTER ROUTE 
-# ================================================================================================================
+
 # list user
-@app.route('/user_list')
-@user_blueprint.route('/user')
-@login_required
+@user_blueprint.route('/user_list')
+# @check_access(menu_id=1)
 def user_list():
+    from app import mysql
     cursor = mysql.connection.cursor()
     cursor.execute('SELECT id, username, email, level, created_at FROM user_accounts')
     users = cursor.fetchall()
@@ -27,10 +22,9 @@ def user_list():
 
 
 # registration and access user
-@user_blueprint.route('/user_list')
-@app.route('/register', methods=('GET','POST'))
-@login_required
+@user_blueprint.route('/register', methods=('GET','POST'))
 def register():
+     from app import mysql
      if request.method == 'POST':
         username = request.form['username']
         email = request.form['email']
@@ -61,17 +55,17 @@ def register():
             mysql.connection.commit()
             cursor.close()
             flash('Registration Success', 'success')
-            return redirect(url_for('user_list'))
+            return redirect(url_for('user.user_list'))
         else:
             cursor.close()
             flash('Username or Email already exists', 'danger')
-            return redirect(url_for('user_list'))
+            return redirect(url_for('user.user_list'))
      return render_template('users/user_list.html')
 
 # change password users not admin
-@app.route('/user_change_password/<int:id>', methods=['GET', 'POST'])
-@login_required
+@user_blueprint.route('/user_change_password/<int:id>', methods=['GET', 'POST'])
 def user_change_password(id):
+    from app import mysql
     cursor = mysql.connection.cursor()
 
     if request.method == 'POST':
@@ -102,12 +96,12 @@ def user_change_password(id):
             
             mysql.connection.commit()
             flash('User updated successfully', 'success')
-            return redirect(url_for('user_list'))
+            return redirect(url_for('user.user_list'))
         else:
             # Current password is incorrect
             flash('Current password is incorrect', 'danger')
             
-        return redirect(url_for('user_change_password', id=user_id))
+        return redirect(url_for('user.user_change_password', id=user_id))
     
     cursor.execute('SELECT id, username, email, level FROM user_accounts WHERE id=%s', (id,))
     user = cursor.fetchone()
@@ -115,14 +109,14 @@ def user_change_password(id):
 
     if user is None:
         flash('User not found', 'danger')
-        return redirect(url_for('list_users'))
+        return redirect(url_for('user.list_users'))
     
     return render_template('users/user_change_password.html', user=user)
 
 # user settings
-@app.route('/user_settings')
-@login_required
+@user_blueprint.route('/user_settings')
 def user_settings():
+    from app import mysql
     user_id = session.get('user_id')
     cursor = mysql.connection.cursor()
     cursor.execute('SELECT id, username FROM users_account WHERE id=%s', (user_id,))
@@ -132,22 +126,26 @@ def user_settings():
     return render_template('base.html', user=user)
 
 # edit users admin
-@app.route('/user_edit')
-@login_required
+@user_blueprint.route('/user_edit')
 def user_edit():
     return render_template('users/user_edit.html')
 
 # delete user
-@app.route('/delete_user/<int:id>', methods=['POST'])
-@login_required
+@user_blueprint.route('/delete_user/<int:id>', methods=['POST'])
 def delete_user(id):
+    from app import mysql
     cursor = mysql.connection.cursor()
     cursor.execute('DELETE FROM user_accounts WHERE id = %s', (id,))
     mysql.connection.commit()
     cursor.close()
     flash('User has been deleted successfully', 'success')
-    return redirect(url_for('user_list'))
+    return redirect(url_for('user.user_list'))
 
-# ================================================================================================================
-# END USERS ROUTE 
-# ================================================================================================================
+@user_blueprint.route('/get_menus', methods=['GET'])
+def get_menus():
+    from app import mysql
+    cursor = mysql.connection.cursor()
+    cursor.execute('SELECT id, menu_name FROM menu')
+    menus = cursor.fetchall()
+    cursor.close()
+    return jsonify(menus) 
