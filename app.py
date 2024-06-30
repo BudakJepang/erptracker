@@ -4,6 +4,7 @@ from flask_mysqldb import MySQL
 from flask import Flask, Blueprint
 from modules.auth import auth_blueprint
 from modules.user import user_blueprint
+import pandas as pd
 
 
 # ================================================================================================================
@@ -11,9 +12,9 @@ from modules.user import user_blueprint
 # ================================================================================================================
 def appFlask():
     app = Flask(__name__)
-    app.config['MYSQL_HOST'] = 'localhost'
-    app.config['MYSQL_USER'] = 'popey'
-    app.config['MYSQL_PASSWORD'] = 'Kpaii1234'
+    app.config['MYSQL_HOST'] = '10.1.1.9'
+    app.config['MYSQL_USER'] = 'rohman'
+    app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
     app.config['MYSQL_DB'] = 'playground'
     app.secret_key = 'testing'
     return app
@@ -37,6 +38,55 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# def get_menu_data(user_id):
+    
+#     # Define the initial data as a DataFrame
+#     dataTable = {
+#         'id_menu': [1],
+#         'id_category': [3],
+#         'link_menu': ['user.user_list'],
+#         'icon_menu': ['nav-icon far fa-user']
+#     }
+#     menu_link = pd.DataFrame(dataTable)
+
+#     # Fetch data from the database
+#     cursor = mysql.connection.cursor()
+#     cursor.execute('''
+#         SELECT 
+#         cat.id AS id_category, m.id AS id_menu, cat.category_name,
+#         m.menu_name 
+#         FROM playground.category_menu as cat
+#         LEFT JOIN playground.menu AS m on cat.id = m.id_category
+#         LEFT JOIN playground.access_users AS au on m.id = au.id_menu 
+#         WHERE au.id_user = %s
+#     ''', (user_id,))
+#     data = cursor.fetchall()
+#     cursor.close()
+
+#     # Convert fetched data to DataFrame
+#     data_df = pd.DataFrame(data, columns=['id_category', 'id_menu', 'category_name', 'menu_name'])
+
+#     # Perform the join operation
+#     merged_df = pd.merge(menu_link, data_df, on='id_menu', how='inner')
+
+#     # Process the merged DataFrame to structure the menu data
+#     menu_data = {}
+#     for _, row in merged_df.iterrows():
+#         category_name = row['category_name']
+#         menu_item = {
+#             'name': row['menu_name'],
+#             'link': row['link_menu'],
+#             'icon': row['icon_menu']
+#         }
+
+#         if category_name not in menu_data:
+#             menu_data[category_name] = []
+
+#         menu_data[category_name].append(menu_item)
+
+#     return menu_data
+
+# FILTER USER BY MENU
 def get_menu_data(user_id):
     cursor = mysql.connection.cursor()
     cursor.execute('''
@@ -45,8 +95,8 @@ def get_menu_data(user_id):
         m.menu_name 
         FROM category_menu as cat
         LEFT JOIN menu AS m on cat.id = m.id_category
-        LEFT JOIN access_users AS au on m.id = au.menu_id 
-        WHERE au.user_id = %s
+        LEFT JOIN access_users AS au on m.id = au.id_menu 
+        WHERE au.id_user = %s
     ''', (user_id,))
     data = cursor.fetchall()
     cursor.close()
@@ -64,7 +114,10 @@ def get_menu_data(user_id):
             menu_data[category_name].append(item_name)
 
     return menu_data
+# BAKCUP
 
+
+# AUTHORIZE MENU ACCESS
 @app.context_processor
 def inject_menu_data():
     if 'id' in session:
@@ -107,4 +160,4 @@ def index():
     return render_template('home.html')
 
 if __name__ == '__main__':
-    app.run(host='10.1.1.8', port=5000, debug=True)
+    app.run(host='10.1.1.9', port=5000, debug=True)
