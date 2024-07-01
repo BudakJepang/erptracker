@@ -22,6 +22,40 @@ def convert_time_to_wib(dtobject):
     return localtime
 
 
+# ORIGINAL GET MENU
+# def get_menu_data(user_id):
+#     cursor = mysql.connection.cursor()
+#     cursor.execute('''
+#         SELECT 
+#         cat.id, cat.category_name,
+#         m.menu_name,
+#         m.id as menu_id -- Tambahkan menu_id
+#         FROM category_menu as cat
+#         LEFT JOIN menu AS m on cat.id = m.id_category
+#         LEFT JOIN access_users AS au on m.id = au.id_menu 
+#         WHERE au.id_user = %s
+#     ''', (user_id,))
+#     data = cursor.fetchall()
+#     cursor.close()
+
+#     menu_data = {}
+#     for row in data:
+#         category_id = row[0]
+#         category_name = row[1]
+#         item_name = row[2]
+#         menu_id = row[3]  # Ambil menu_id
+
+#         if category_name not in menu_data:
+#             menu_data[category_name] = []
+
+#         if item_name:
+#             menu_data[category_name].append({
+#                 'name': item_name,
+#                 'url': MENU_URLS.get(menu_id)  # Dapatkan URL dari dictionary
+#             })
+
+#     return menu_data
+
 # mysql = mysqlConn(app)
 # ================================================================================================================
 # GLOBAL PARAMETER ===============================================================================================

@@ -153,17 +153,18 @@
                   <p>HOME</p>
                 </a>
               </li>
-            {% for category, items in menu_data.items() %}
-            <li class="nav-header">{{ category }}</li>
-            {% for item in items %}
-            <li class="nav-item">
-                <a href="{{ url_for('user.user_list') }}" class="nav-link">
-                    <i class="nav-icon far fa-circle"></i>
-                    <p>{{ item }}</p>
-                </a>
-            </li>
-            {% endfor %}
-            {% endfor %}
+              {% for category, items in menu_data.items() %}
+              <li class="nav-header">{{ category }}</li>
+                  {% for item in items %}
+                  <li class="nav-item">
+                      <a href="{{ url_for(item.url) }}" class="nav-link">
+                          <i class="{{ item.icon }}"></i>
+                          <p>{{ item.name }}</p>
+                      </a>
+                  </li>
+                  {% endfor %}
+              {% endfor %}
+              
 
         </ul>
       </nav>
