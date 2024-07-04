@@ -5,6 +5,7 @@ from flask import Flask, Blueprint
 from modules.auth import auth_blueprint
 from modules.user import user_blueprint
 from modules.entity import entity_blueprint
+from modules.pr import pr_blueprint
 import pandas as pd
 
 
@@ -14,9 +15,12 @@ import pandas as pd
 def appFlask():
     app = Flask(__name__)
     # app.config['MYSQL_HOST'] = '10.0.13.247'
-    app.config['MYSQL_HOST'] = '10.1.1.9'
-    app.config['MYSQL_USER'] = 'rohman'
-    app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
+    app.config['MYSQL_HOST'] = '10.1.1.19'
+    # app.config['MYSQL_HOST'] = '10.1.1.9'
+    app.config['MYSQL_USER'] = 'popey'
+    # app.config['MYSQL_USER'] = 'rohman'
+    # app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
+    app.config['MYSQL_PASSWORD'] = 'Kpaii1234'
     app.config['MYSQL_DB'] = 'playground'
     app.secret_key = 'testing'
     return app
@@ -44,14 +48,14 @@ def login_required(f):
 # FILTER USER BY MENU
 def get_menu_data(user_id):
     MENU_URLS = {
-        4: 'user.user_list',
-        6: 'entity.entity_list'
+        1: 'user.user_list',
+        3: 'entity.entity_list'
     # Tambahkan menu_id dan URL yang sesuai
     }
 
     MENU_ICON = {
-        4: 'nav-icon far fa-user',
-        6: 'nav-icon far fa-building'
+        1: 'nav-icon far fa-user',
+        3: 'nav-icon far fa-building'
     # Tambahkan menu_id dan URL yang sesuai
     }
 
@@ -129,6 +133,7 @@ def check_access(menu_id):
 app.register_blueprint(auth_blueprint)
 app.register_blueprint(user_blueprint)
 app.register_blueprint(entity_blueprint)
+app.register_blueprint(pr_blueprint)
 # ================================================================================================================ 
 # ================================================================================================================
 
@@ -138,5 +143,5 @@ def index():
     return render_template('home.html')
 
 if __name__ == '__main__':
-    app.run(host='10.1.1.9', port=5000, debug=True)
+    app.run(host='10.1.1.19', port=5000, debug=True)
     # app.run(host='10.0.13.247', port=5000, debug=True)
