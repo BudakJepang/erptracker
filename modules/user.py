@@ -146,11 +146,7 @@ def user_settings():
     return render_template('base.html', user=user)
 
 
-# EDIT USER AS A ADMIN
-# if current_user.level != 'admin':
-#     flash('You do not have permission to perform this action', 'danger')
-#     return redirect(url_for('user.user_list'))
-
+# EDIT USER AS ADMIN
 @user_blueprint.route('/user_edit/<int:user_id>', methods=('GET', 'POST'))
 @login_required
 def user_edit(user_id):
@@ -158,18 +154,13 @@ def user_edit(user_id):
     
     cursor = mysql.connection.cursor()
     
-    # Fetch the user's data
+    # get data user
     cursor.execute('''SELECT 
                     ua.id AS id_user, 
-                    au.id AS id_access,
-                    au.id_menu,
                     ua.username, 
                     ua.email, 
-                    ua.level,
-                    m.menu_name 
+                    ua.level
                     FROM user_accounts as ua
-                    LEFT JOIN access_users as au ON ua.id = au.id_user 
-                    LEFT JOIN menu as m ON au.id_menu = m.id
                     WHERE ua.id = %s''', (user_id,))
     user = cursor.fetchone()
     
@@ -177,11 +168,21 @@ def user_edit(user_id):
         flash('User not found', 'danger')
         return redirect(url_for('user.user_list'))
     
+    # get all menus untuk list menu pada html
+    cursor.execute('SELECT id, menu_name FROM menu')
+    all_menus = cursor.fetchall()
+    
+    # Fetch current menus for the user
+    cursor.execute('SELECT id_menu FROM access_users WHERE id_user = %s', (user_id,))
+    current_menus = cursor.fetchall()
+    current_menus = {menu[0] for menu in current_menus}
+    
     if request.method == 'POST':
         username = request.form['username']
         email = request.form['email']
         level = request.form['level']
         updated_by = session.get('username', 'system')
+        selected_menus = request.form.getlist('menus') 
         current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         cursor.execute('''
@@ -189,6 +190,23 @@ def user_edit(user_id):
             SET username = %s, email = %s, level = %s, updated_at = %s, updated_by = %s
             WHERE id = %s
         ''', (username, email, level, current_timestamp, updated_by, user_id))
+        
+        # Determine menus to add and remove
+        selected_menus = set(int(menu_id) for menu_id in selected_menus)
+        menus_to_add = selected_menus - current_menus
+        menus_to_remove = current_menus - selected_menus
+
+        # Delete unselected menus
+        if menus_to_remove:
+            cursor.executemany('DELETE FROM access_users WHERE id_user = %s AND id_menu = %s', 
+                               [(user_id, menu_id) for menu_id in menus_to_remove])
+        
+        # Insert new selected menus
+        for menu_id in menus_to_add:
+            cursor.execute('''
+                INSERT INTO access_users (id_user, id_menu, created_at, updated_at, created_by, updated_by)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            ''', (user_id, menu_id, current_timestamp, current_timestamp, updated_by, updated_by))
         
         mysql.connection.commit()
         cursor.close()
@@ -198,14 +216,12 @@ def user_edit(user_id):
     
     user_data = {
         'id': user[0],
-        'username': user[3],
-        'email': user[4],
-        'level': user[5],
-        'menu': user[6],
+        'username': user[1],
+        'email': user[2],
+        'level': user[3]
     }
     
-    return render_template('users/user_edit.html', user=user_data)
-
+    return render_template('users/user_edit.html', user=user_data, all_menus=all_menus, current_menus=current_menus)
 
 
 # DELETE USER

@@ -27,160 +27,148 @@
 
 
  <!-- Main content -->
- <section class="content">
-    <div class="container-fluid">
-      <div class="row">
-        <!-- left column -->
-        <div class="col-md-12">
-          <!-- general form elements disabled -->
-          <div class="card card-secondary">
-            <div class="card-header">
-              <h3 class="card-title">PR Input</h3>
-            </div>
-            <!-- /.card-header -->
-            <div class="card-body">
-              <form>
-                <div class="row">
-                  <div class="col-sm-6">
-                    <!-- text input -->
-                    <div class="form-group">
-                      <label>Nomor PR</label>
-                      <input type="text" class="form-control" placeholder="Enter ...">
-                    </div>
-                    <div class="form-group">
-                        <label>Nama User</label>
-                        <input type="text" class="form-control" placeholder="Enter ...">
-                      </div>
-                  </div>
-                  <div class="col-sm-6">
-                    <div class="form-group">
-                        <label>Tanggal Permintaan:</label>
-                          <div class="input-group date" id="reservationdatetime" data-target-input="nearest">
-                              <input type="text" class="form-control datetimepicker-input" data-target="#reservationdatetime"/>
-                              <div class="input-group-append" data-target="#reservationdatetime" data-toggle="datetimepicker">
-                                  <div class="input-group-text"><i class="fa fa-calendar"></i></div>
-                              </div>
-                          </div>
-                      </div>
-                      <div class="form-group">
-                        <label>Nama Project</label>
-                        <input type="text" class="form-control" placeholder="Enter ...">
-                      </div>
-                  </div>
-                </div>
-                <div class="row">
-                    <div class="col-sm-6">
-                      <div class="form-group">
-                        <label>Nama Entity</label>
-                        <input type="text" class="form-control" placeholder="Enter ...">
-                      </div>
-                    </div>
-                    <div class="col-sm-6">
-                        <div class="form-group">
-                            <label>Total Budget Approved</label>
-                            <input type="number" class="form-control" placeholder="Rp ...">
-                          </div>
-                    </div>
-                  </div>
-                <div class="row">
-                  <div class="col-sm-6">
-                    <!-- textarea -->
-                    <div class="form-group">
-                        <label>Nama Barang</label>
-                        <input type="text" class="form-control" placeholder="Enter ...">
-                      </div>
-                  </div>
-                  <div class="col-sm-6">
-                    <div class="form-group">
-                        <label>QTY</label>
-                        <input type="number" class="form-control" placeholder="Enter ...">
-                      </div>
-                  </div>
-                </div>
-                <div class="row">
-                    <div class="col-sm-6">
-                      <!-- textarea -->
-                      <div class="form-group">
-                          <label>Spesifikasi Barang dan Jasa</label>
-                          <textarea class="form-control" rows="3" placeholder="Enter ..."></textarea>
-                        </div>
-                    </div>
-                  </div>
-                  <div class="row">
-                    <div class="col-sm-6">
-                      <!-- textarea -->
-                      <div class="form-group">
-                          <label>Nama Barang</label>
-                          <input type="text" class="form-control" placeholder="Enter ...">
-                        </div>
-                    </div>
-                    <div class="col-sm-6">
-                        <div class="form-group">
-                            <label>Tanggal Dibutuhkan:</label>
-                              <div class="input-group date" id="reservationdatetime" data-target-input="nearest">
-                                  <input type="text" class="form-control datetimepicker-input" data-target="#reservationdatetime"/>
-                                  <div class="input-group-append" data-target="#reservationdatetime" data-toggle="datetimepicker">
-                                      <div class="input-group-text"><i class="fa fa-calendar"></i></div>
-                                  </div>
-                              </div>
-                          </div>
-                    </div>
-                  </div>
-                  <div class="row">
-                    <div class="col-sm-3">
-                      <!-- textarea -->
-                      <div class="form-group">
-                          <label>Dibuat Oleh</label>
-                          <input type="text" class="form-control" placeholder="Enter ...">
-                        </div>
-                      </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-sm-3">
-                          <!-- textarea -->
-                          <div class="form-group">
-                              <label>Disetujui Oleh: 1</label>
-                              <input type="text" class="form-control" placeholder="First Approval ...">
-                            </div>
-                          </div>
-                          <div class="col-sm-3">
-                            <!-- textarea -->
-                            <div class="form-group">
-                                <label>2:</label>
-                                <input type="text" class="form-control" placeholder="Second Approval ...">
-                              </div>
-                            </div>
-                            <div class="col-sm-3">
-                                <!-- textarea -->
-                                <div class="form-group">
-                                    <label>3:</label>
-                                    <input type="text" class="form-control" placeholder="Third Approval ...">
-                                  </div>
-                                </div>
-                                <div class="col-sm-3">
-                                    <!-- textarea -->
-                                    <div class="form-group">
-                                        <label>4:</label>
-                                        <input type="text" class="form-control" placeholder="Forth Approval ...">
-                                      </div>
-                                    </div>
-                        </div>
-                
-              </form>
-            </div>
-            <!-- /.card-body -->
+<section class="content">
+  <div class="container-fluid">
+    <div class="row">
+      <!-- left column -->
+      <div class="col-md-12">
+        <!-- general form elements disabled -->
+        <div class="card card-secondary">
+          <div class="card-header">
+            <h3 class="card-title">PR Input</h3>
           </div>
-          <!-- /.card -->
-          <!-- general form elements disabled -->
-          
+          <!-- /.card-header -->
+          <div class="card-body">
+            <form action="/pr_submit" method="POST">
+              <div class="row">
+                <div class="col-sm-3">
+                  <!-- text input -->
+                  <div class="form-group">
+                    <label>Nomor PR</label>
+                    <input type="text" name="no_pr" class="form-control" placeholder="Enter ..." required>
+                  </div>
+                </div>
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label>Nama User</label>
+                    <input type="text" name="username" class="form-control" placeholder="Enter ...">
+                  </div>
+                </div>
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label>Total Budget Approved</label>
+                    <input type="number" name="total_budget" class="form-control" placeholder="Rp ...">
+                  </div>
+                </div>
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label>QTY</label>
+                    <input type="number" name="qty" class="form-control" placeholder="Enter ...">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label>Tanggal Permintaan:</label>
+                    <div class="input-group date" id="reservationdate" data-target-input="nearest">
+                      <input type="date" name="date_request" class="form-control"/>
+                      <div class="input-group-append" data-target="#reservationdate" data-toggle="">
+                        <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label>Tanggal Dibutuhkan:</label>
+                    <div class="input-group date" id="reservationdate" data-target-input="nearest">
+                      <input type="date" name="due_date" class="form-control"/>
+                      <div class="input-group-append" data-target="#reservationdate" data-toggle="">
+                        <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label>Nama Project</label>
+                    <input type="text" name="project_name" class="form-control" placeholder="Enter ...">
+                  </div>
+                </div>
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label>Nama Entity</label>
+                    <input type="text" name="entity" class="form-control" placeholder="Enter ...">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label>Disetujui oleh 1:</label>
+                    <input type="text" name="approved_by_one" class="form-control" placeholder="First Approval ...">
+                  </div>
+                </div>
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label>2:</label>
+                    <input type="text" name="approved_by_two" class="form-control" placeholder="Second Approval ...">
+                  </div>
+                </div>
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label>3:</label>
+                    <input type="text" name="approved_by_three" class="form-control" placeholder="Third Approval ...">
+                  </div>
+                </div>
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label>4:</label>
+                    <input type="text" name="approved_by_four" class="form-control" placeholder="Fourth Approval ...">
+                  </div>
+                </div>
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label>Dibuat Oleh</label>
+                    <input type="text" name="created_by" class="form-control" placeholder="Enter ...">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-sm-6">
+                  <!-- textarea -->
+                  <div class="form-group">
+                    <label>Nama Barang</label>
+                    <input type="text" name="item_name" class="form-control" placeholder="Enter ...">
+                  </div>
+                </div>
+                <div class="col-sm-6">
+                  <div class="form-group">
+                    <label>Spesifikasi Barang dan Jasa</label>
+                    <textarea name="item_description" class="form-control" rows="3" placeholder="Enter ..."></textarea>
+                  </div>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-secondary">Submit</button>
+              <a href="{{ url_for('pr.pr_list') }}" class="btn btn-secondary" title="Edit User"> Back</a>
+            </form>
+          </div>
+          <!-- /.card-body -->
         </div>
-        <!--/.col (right) -->
+        <!-- /.card -->
+        <!-- general form elements disabled -->
       </div>
-      <!-- /.row -->
-    </div><!-- /.container-fluid -->
-  </section>
-  <!-- /.content -->
+      <!--/.col (right) -->
+    </div>
+    <!-- /.row -->
+  </div><!-- /.container-fluid -->
+</section>
+<!-- /.content -->
 </div>
+
+
+
 
 {% endblock %}
 <!-- END INHERETENCE CONTENT -->

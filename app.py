@@ -14,13 +14,13 @@ import pandas as pd
 # ================================================================================================================
 def appFlask():
     app = Flask(__name__)
-    # app.config['MYSQL_HOST'] = '10.0.13.247'
-    app.config['MYSQL_HOST'] = '10.1.1.19'
-    # app.config['MYSQL_HOST'] = '10.1.1.9'
-    app.config['MYSQL_USER'] = 'popey'
-    # app.config['MYSQL_USER'] = 'rohman'
-    # app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
-    app.config['MYSQL_PASSWORD'] = 'Kpaii1234'
+    # app.config['MYSQL_HOST'] = '10.0.13.247' # DB HOST OFFICE
+    # app.config['MYSQL_HOST'] = '10.0.12.53' # DB HOST ONPREM
+    app.config['MYSQL_HOST'] = '10.1.1.3' # DB HOST HOME
+    app.config['MYSQL_USER'] = 'rohman'
+    # app.config['MYSQL_USER'] = 'data-tech'
+    app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
+    # app.config['MYSQL_PASSWORD'] = '!@#Bismill4h'
     app.config['MYSQL_DB'] = 'playground'
     app.secret_key = 'testing'
     return app
@@ -35,6 +35,9 @@ mysql = mysqlConn(app)
 # ================================================================================================================
 
 
+# ================================================================================================================
+# MENU FILTER FOR USER AND LOGIN REQUIRED 
+# ================================================================================================================
 # LOCK REQUIRED TO LOGIN
 def login_required(f):
     @wraps(f)
@@ -47,16 +50,19 @@ def login_required(f):
 
 # FILTER USER BY MENU
 def get_menu_data(user_id):
-    MENU_URLS = {
+
+    # tambahkan route untuk module menu baru berdasarkan id_menu di db
+    menu_url = {
         1: 'user.user_list',
-        3: 'entity.entity_list'
-    # Tambahkan menu_id dan URL yang sesuai
+        3: 'entity.entity_list',
+        4: 'pr.pr_list'
     }
 
-    MENU_ICON = {
+    # tambahkan icon untuk module menu baru berdasarkan id_menu di db
+    menu_icon = {
         1: 'nav-icon far fa-user',
-        3: 'nav-icon far fa-building'
-    # Tambahkan menu_id dan URL yang sesuai
+        3: 'nav-icon far fa-building',
+        4: 'nav-icon far fa-edit'
     }
 
     cursor = mysql.connection.cursor()
@@ -74,18 +80,24 @@ def get_menu_data(user_id):
     cursor.close()
 
     menu_data = {}
+
+    # looping untuk mendapatkan semua data yang didapat dari query db
     for row in data:
+
+        # tampung hasil looping di variable
         category_id = row[0]
         category_name = row[1]
         item_name = row[2]
         menu_id = row[3]
 
+        # kondisi untuk data menu yang kosong
         if category_name not in menu_data:
             menu_data[category_name] = []
 
+        # kondisi untuk category name yang terdaftar di DB 
         if item_name:
-            url = MENU_URLS.get(menu_id)
-            icon = MENU_ICON.get(menu_id)
+            url = menu_url.get(menu_id)
+            icon = menu_icon.get(menu_id)
             if url and icon:  # Pastikan url tidak None
                 menu_data[category_name].append({
                     'name': item_name,
@@ -126,6 +138,9 @@ def check_access(menu_id):
             return f(*args, **kwargs)
         return decorated_function
     return decorator
+# ================================================================================================================
+# ================================================================================================================
+
 
 # ================================================================================================================
 # ALL FUNCTION ROUTE
@@ -134,14 +149,15 @@ app.register_blueprint(auth_blueprint)
 app.register_blueprint(user_blueprint)
 app.register_blueprint(entity_blueprint)
 app.register_blueprint(pr_blueprint)
-# ================================================================================================================ 
-# ================================================================================================================
 
 @app.route('/')
 @login_required
 def index():
     return render_template('home.html')
+# ================================================================================================================ 
+# ================================================================================================================
 
 if __name__ == '__main__':
-    app.run(host='10.1.1.19', port=5000, debug=True)
+    app.run(host='10.1.1.3', port=5000, debug=True)
     # app.run(host='10.0.13.247', port=5000, debug=True)
+    # app.run(host='10.0.13.53', port=5000, debug=True)

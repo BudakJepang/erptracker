@@ -125,79 +125,86 @@
   </section>
 
   <!-- Main content -->
-<section class="content">
-  <div class="container-fluid">
-    <div class="row">
-      <!-- left column -->
-      <div class="col-md-6">
-        <!-- Admin Edit User card -->
-        <div class="card card-secondary">
-          <div class="card-header">
-            <h3 class="card-title">Admin Edit User</h3>
-          </div>
-          <!-- /.card-header -->
-          <!-- form start -->
-          <form action="{{ url_for('user.user_edit', user_id=user.id) }}" method="POST">
-            <div class="card-body">
-              <div class="form-group">
-                <label for="username">Username</label>
-                <input class="form-control" type="text" id="username" name="username" value="{{ user.username }}" required readonly>
-              </div>
-              <div class="form-group">
-                <label for="email">Email</label>
-                <input class="form-control" type="email" id="email" name="email" value="{{ user.email }}" required readonly>
-              </div>
-              <div class="form-group">
+  <section class="content">
+    <div class="container-fluid">
+      <div class="row">
+        <!-- left column -->
+        <div class="col-md-6">
+          <!-- Admin Edit User card -->
+          <div class="card card-secondary">
+            <div class="card-header">
+              <h3 class="card-title">Admin Edit User</h3>
+            </div>
+            <!-- /.card-header -->
+            <!-- form start -->
+            <form action="{{ url_for('user.user_edit', user_id=user.id) }}" method="POST">
+              <div class="card-body">
+                <div class="form-group">
+                  <label for="username">Username</label>
+                  <input class="form-control" type="text" id="username" name="username" value="{{ user.username }}" required readonly>
+                </div>
+                <div class="form-group">
+                  <label for="email">Email</label>
+                  <input class="form-control" type="email" id="email" name="email" value="{{ user.email }}" required readonly>
+                </div>
+                <div class="form-group">
                 <label for="level">Change Role</label>
                 <select class="form-control" id="level" name="level" required>
-                  <option selected></option>
-                  <option value="admin" {% if user.level == 'admin' %}selected{% endif %}>Admin</option>
-                  <option value="officer" {% if user.level == 'officer' %}selected{% endif %}>Officer</option>
+                    <option selected></option>
+                    <option value="admin" {% if user.level == 'admin' %}selected{% endif %}>Admin</option>
+                    <option value="officer" {% if user.level == 'officer' %}selected{% endif %}>Officer</option>
                 </select>
+                </div>
               </div>
+              <!-- /.card-body -->
+              <div class="card-footer">
+                <button type="submit" class="btn btn-secondary">Submit</button>
+                <a class="btn btn-secondary" href="{{ url_for('user.user_list') }}" role="button">Back</a>
+              </div>
+            </form>
+          </div>
+          <!-- /.card -->
+        </div>
+        <!--/.col (left) -->
+
+        <!-- right column -->
+        <div class="col-md-6">
+          <!-- About User card -->
+          <div class="card card-secondary">
+            <div class="card-header">
+              <h3 class="card-title">About User</h3>
             </div>
+            <!-- /.card-header -->
             <div class="card-body">
-              <div class="form-group">
-                <label>Menu Access</label>
-                {% for menu in all_menus %}
-                <div class="custom-control custom-checkbox">
-                  <input class="custom-control-input" type="checkbox" id="menu{{ menu[0] }}" name="menus" value="{{ menu[0] }}" 
-                  {% if menu[0] in current_menus %}checked{% endif %}>
-                  <label for="menu{{ menu[0] }}" class="custom-control-label">{{ menu[1] }}</label>
-                </div>
-                {% endfor %}
-              </div>
-              <div class="btn-group">
-                <button type="button" class="btn btn-default" onclick="checkAll()">Check All</button>
-                <button type="button" class="btn btn-default" onclick="uncheckAll()">Uncheck All</button>
-                </div>
+              <strong><i class="fas fa-user"></i> Full Name</strong>
+              <p class="text-muted">
+                {{ user.username }}
+              </p>
+              <hr>
+              <strong><i class="fas fa-map-marker-alt mr-1"></i> Email</strong>
+              <p class="text-muted">{{ user.email }}</p>
+              <hr>
+              <strong><i class="fas fa-pencil-alt mr-1"></i> Role</strong>
+              <p class="text-muted">
+                <p class="text-muted">{{ user.level }}</p>
+              </p>
+              <hr>
+              <strong><i class="far fa-file-alt mr-1"></i> Menu Access</strong>
+              <p class="text-muted">{{ user.menu }}</p>
             </div>
             <!-- /.card-body -->
-            <div class="card-footer">
-              <button type="submit" class="btn btn-secondary">Submit</button>
-              <a class="btn btn-secondary" href="{{ url_for('user.user_list') }}" role="button">Back</a>
-            </div>
-          </form>
+          </div>
+          <!-- /.card -->
         </div>
-        <!-- /.card -->
+        <!--/.col (right) -->
       </div>
-      <!--/.col (left) -->
+      <!-- /.row -->
+    </div><!-- /.container-fluid -->
+  </section>
+  <!-- /.content -->
+</div>
+<!-- /.content-wrapper -->
 
-<script>
-  function checkAll() {
-    var checkboxes = document.querySelectorAll('input[name="menus"]');
-    checkboxes.forEach((checkbox) => {
-      checkbox.checked = true;
-    });
-  }
-
-  function uncheckAll() {
-    var checkboxes = document.querySelectorAll('input[name="menus"]');
-    checkboxes.forEach((checkbox) => {
-      checkbox.checked = false;
-    });
-  }
-</script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     {% with messages = get_flashed_messages(with_categories=true) %}
