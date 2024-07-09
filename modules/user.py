@@ -146,7 +146,7 @@ def user_settings():
     return render_template('base.html', user=user)
 
 
-# EDIT USER AS ADMIN
+# EDIT USER AS USER ADMIN
 @user_blueprint.route('/user_edit/<int:user_id>', methods=('GET', 'POST'))
 @login_required
 def user_edit(user_id):
@@ -156,13 +156,13 @@ def user_edit(user_id):
     
     # get data user
     cursor.execute('''SELECT 
-                    ua.id AS id_user, 
-                    ua.username, 
-                    ua.email, 
-                    ua.level
-                    FROM user_accounts as ua
-                    WHERE ua.id = %s''', (user_id,))
-    user = cursor.fetchone()
+                    id AS id_user, 
+                    username, 
+                    email, 
+                    level
+                    FROM user_accounts
+                    WHERE id = %s''', (user_id,))
+    user = cursor.fetchone() # get user untuk ditampilkan datanya pada form HTML
     
     if user is None:
         flash('User not found', 'danger')
@@ -170,9 +170,9 @@ def user_edit(user_id):
     
     # get all menus untuk list menu pada html
     cursor.execute('SELECT id, menu_name FROM menu')
-    all_menus = cursor.fetchall()
+    all_menus = cursor.fetchall() # value ini akan kita kirim pada list menu checkbox HTML untuk dilooping
     
-    # Fetch current menus for the user
+    # get access menu untuk user apa saja listnya
     cursor.execute('SELECT id_menu FROM access_users WHERE id_user = %s', (user_id,))
     current_menus = cursor.fetchall()
     current_menus = {menu[0] for menu in current_menus}
@@ -191,17 +191,17 @@ def user_edit(user_id):
             WHERE id = %s
         ''', (username, email, level, current_timestamp, updated_by, user_id))
         
-        # Determine menus to add and remove
+        # menentukan yang mau dihapus atau ditambahkan
         selected_menus = set(int(menu_id) for menu_id in selected_menus)
         menus_to_add = selected_menus - current_menus
         menus_to_remove = current_menus - selected_menus
 
-        # Delete unselected menus
+        # delete menu yang dimiliki user jika mau ditakedown accessnya
         if menus_to_remove:
             cursor.executemany('DELETE FROM access_users WHERE id_user = %s AND id_menu = %s', 
                                [(user_id, menu_id) for menu_id in menus_to_remove])
         
-        # Insert new selected menus
+        # menambahkan menu pada user
         for menu_id in menus_to_add:
             cursor.execute('''
                 INSERT INTO access_users (id_user, id_menu, created_at, updated_at, created_by, updated_by)
@@ -237,7 +237,7 @@ def delete_user(id):
     return redirect(url_for('user.user_list'))
 
 
-# GET LIST MENU ON LIST USERS AS JSON RETURN
+# GET LIST MENU ON LIST USERS AS JSON RETURN (peruntukan ketika register untuk modal json)
 @user_blueprint.route('/get_menus', methods=['GET'])
 def get_menus():
     from app import mysql
