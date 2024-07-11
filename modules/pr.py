@@ -11,8 +11,8 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
-import datetime
-
+from datetime import datetime
+from flask_mysqldb import MySQL, MySQLdb
 
 
 # LOCK REQUIRED TO LOGIN
@@ -44,6 +44,8 @@ def pr_list():
 def pr_add():
     return render_template('pr/pr_add.html')
 
+
+# SUBMIT PR
 @pr_blueprint.route('/pr_submit', methods=['POST'])
 def pr_submit():
     from app import mysql
@@ -58,7 +60,7 @@ def pr_submit():
     date_request = datetime.datetime.strptime(request.form['date_request'], '%Y-%m-%d')
     due_date = datetime.datetime.strptime(request.form['due_date'], '%Y-%m-%d')
     created_by = request.form['created_by']
-    updated_by = created_by  # Assuming the same user is creating and updating
+    updated_by = created_by  # samakan updated_at dengan created_at
     approved_by_one = request.form['approved_by_one']
     approved_by_two = request.form['approved_by_two']
     approved_by_three = request.form['approved_by_three']
@@ -77,10 +79,11 @@ def pr_submit():
 
     return redirect('/pr_list')
 
+# GENERATE PDF PR
 @pr_blueprint.route('/generate_pdf', methods=['POST'])
 def generate_pdf():
     no_pr = request.form.get('no_pr')
-    
+    from app import mysql
     cur = mysql.connection.cursor()
     cur.execute("SELECT * FROM purchase_requisition WHERE no_pr = %s", (no_pr,))
     pr = cur.fetchone()
@@ -220,3 +223,146 @@ def generate_pdf():
 
     buffer.seek(0)
     return send_file(buffer, as_attachment=True, download_name='purchase_requisition.pdf', mimetype='application/pdf')
+
+@pr_blueprint.route('/pr_temp_submit', methods=['GET', 'POST'])
+def pr_temp_submit():
+    pr_number = None
+
+    # GET ENTITY AND DEPARTMENT
+    from app import mysql
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT id, entity, entity_name FROM entity")
+    entities = cursor.fetchall()
+
+    cursor.execute("SELECT id, entity_id, department, department_name FROM department")
+    departments = cursor.fetchall()
+    
+    if request.method == 'POST':
+
+        # VARIABLE PR HEADER
+        entity = request.form['entity']
+        department = request.form['department']
+        no_pr = generate_pr_number(entity, department)
+        tanggal_permintaan = request.form['tanggal_permintaan']
+        requester_name = 'Mohammad Nurohman'
+        total_budget_approved = request.form['total_budget_approved']
+        nama_project = request.form['nama_project']
+        requester_id = 1
+        remarks = ""
+        approval1_status = ""
+        approval1_user_id = 1
+        approval1_notes = ""
+        approval2_status = ""
+        approval2_user_id = 2
+        approval2_notes = ""
+        approval3_status = ""
+        approval3_user_id = 3
+        approval3_notes = ""
+
+        # VARIABLE FOR AUTO_NUM TABLE
+        current_date = datetime.now()
+        year_month = current_date.strftime('%y%m')
+
+        # INSERT FOR TABLE AUTO NUM
+        try:
+            cursor.execute("INSERT INTO pr_autonum (entity, department, month, year, pr_no) VALUES (%s, %s, %s, %s, %s)",
+                       (entity, department, current_date.month, current_date.year, no_pr))
+            mysql.connection.commit()
+        except MySQLdb.IntegrityError as e:
+            if e.args[0] == 1062:  # Duplicate entry error
+                sequence_number = f"{get_next_sequence(entity, department):03d}"
+                pr_number = f"PR-{entity}-{department}-{year_month}-{sequence_number}"
+                cursor.execute("INSERT INTO pr_autonum (entity, department, month, year, pr_no) VALUES (%s, %s, %s, %s, %s)",
+                            (entity, department, current_date.month, current_date.year, pr_number))
+                mysql.connection.commit()
+
+        # INSERT TABLE FOR TABLE PR_HEADER
+        insert_header_query = '''
+                INSERT INTO pr_header (no_pr ,tanggal_permintaan ,requester_id ,requester_name ,nama_project ,entity ,total_budget_approved ,remarks ,approval1_status ,
+                approval1_user_id ,approval1_notes ,approval2_status ,approval2_user_id ,approval2_notes ,approval3_status ,approval3_user_id ,approval3_notes ,created_at ,updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        '''
+        # EXECUTION QUERY FOR TABLE PR_HEADER
+        today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        cursor.execute(insert_header_query, (no_pr, tanggal_permintaan, requester_id, requester_name, nama_project, entity, total_budget_approved, remarks, approval1_status,
+                                             approval1_user_id, approval1_notes, approval2_status, approval2_user_id, approval2_notes, approval3_status, approval3_user_id, approval3_notes, today, today))
+
+        items = []
+        index = 1
+        while True:
+            try:
+                nama_item = request.form[f'nama_item{index}']
+                spesifikasi = request.form[f'spesifikasi{index}']
+                qty = request.form[f'qty{index}']
+                tanggal = request.form[f'tanggal{index}']
+                items.append((no_pr, index, nama_item, spesifikasi, qty, tanggal, today, today))
+                index += 1
+            except KeyError:
+                break
+
+        if items:
+            insert_detail_query = '''
+                INSERT INTO pr_detail (no_pr, item_no, nama_item, spesifikasi, qty, tanggal, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            '''
+            cursor.executemany(insert_detail_query, items)
+            mysql.connection.commit()
+        cursor.close()
+
+    return render_template('pr/pr_temp.html', pr_number=pr_number, entities=entities, departments=departments)
+
+
+# SEQUENCE PR NUMBER
+def get_next_sequence(entity, department):
+    current_date = datetime.now()
+    current_month = current_date.month
+    current_year = current_date.year
+    from app import mysql
+
+    cursor = mysql.connection.cursor()
+    query = '''
+        SELECT pr_no FROM pr_autonum
+        WHERE entity = %s AND department = %s AND month = %s AND year = %s
+        ORDER BY created_at DESC LIMIT 1
+    '''
+    cursor.execute(query, (entity, department, current_month, current_year))
+    last_pr = cursor.fetchone()
+
+    if last_pr:
+        last_sequence_number = int(last_pr[0].split('-')[-1])
+        next_sequence_number = last_sequence_number + 1
+    else:
+        next_sequence_number = 1
+
+    cursor.close()
+    return next_sequence_number
+
+def generate_pr_number(entity, department):
+    current_date = datetime.now()
+    year_month = current_date.strftime('%y%m')
+    sequence_number = f"{get_next_sequence(entity, department):03d}"
+    pr_number = f"PR-{entity}-{department}-{year_month}-{sequence_number}"
+    
+    # from app import mysql
+    # cursor = mysql.connection.cursor()
+    # try:
+    #     cursor.execute("INSERT INTO pr_autonum (entity, department, month, year, pr_no) VALUES (%s, %s, %s, %s, %s)",
+    #                    (entity, department, current_date.month, current_date.year, pr_number))
+    #     mysql.connection.commit()
+    # except MySQLdb.IntegrityError as e:
+    #     if e.args[0] == 1062:  # Duplicate entry error
+    #         sequence_number = f"{get_next_sequence(entity, department):03d}"
+    #         pr_number = f"PR-{entity}-{department}-{year_month}-{sequence_number}"
+    #         cursor.execute("INSERT INTO pr_autonum (entity, department, month, year, pr_no) VALUES (%s, %s, %s, %s, %s)",
+    #                        (entity, department, current_date.month, current_date.year, pr_number))
+    #         mysql.connection.commit()
+    # cursor.close()
+    return pr_number
+
+@pr_blueprint.route('/generate_pr', methods=['GET', 'POST'])
+def generate_pr():
+    data = request.json
+    entity = data['entity']
+    department = data['department']
+    pr_number = generate_pr_number(entity, department)
+    return jsonify({'pr_number': pr_number})
