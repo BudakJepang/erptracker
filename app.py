@@ -14,14 +14,17 @@ import pandas as pd
 # ================================================================================================================
 def appFlask():
     app = Flask(__name__)
-    app.config['MYSQL_HOST'] = '10.0.13.247' # DB HOST OFFICE
+    # app.config['MYSQL_HOST'] = '10.0.13.247' # DB HOST OFFICE
     # app.config['MYSQL_HOST'] = '10.0.12.53' # DB HOST ONPREM
-    # app.config['MYSQL_HOST'] = '10.1.1.3' # DB HOST HOME
+    # app.config['MYSQL_HOST'] = '192.168.1.18' # DB HOST HOME
+    app.config['MYSQL_HOST'] = '10.1.1.3' # DB HOST HOME
     app.config['MYSQL_USER'] = 'rohman'
     # app.config['MYSQL_USER'] = 'data-tech'
     app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
     # app.config['MYSQL_PASSWORD'] = '!@#Bismill4h'
     app.config['MYSQL_DB'] = 'playground'
+    app.config['UPLOAD_FOLDER'] = 'uploads'
+    app.config['MAX_CONTENT_PATH'] = 16 * 1024 * 1024  # 16 MB max file size
     app.secret_key = 'testing'
     return app
 
@@ -158,6 +161,7 @@ def index():
 # ================================================================================================================
 
 if __name__ == '__main__':
-    # app.run(host='10.1.1.3', port=5000, debug=True)
-    app.run(host='10.0.13.247', port=5000, debug=True)
+    app.run(host='10.1.1.3', port=5000, debug=True)
+    # app.run(host='10.0.13.247', port=5000, debug=True)
     # app.run(host='10.0.13.53', port=5000, debug=True)
+    # app.run(host='192.168.1.18', port=5000, debug=True)

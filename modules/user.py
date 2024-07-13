@@ -6,7 +6,6 @@ from modules.decorator import login_required, check_access
 from functools import wraps
 
 
-
 # LOCK REQUIRED TO LOGIN
 def login_required(f):
     @wraps(f)

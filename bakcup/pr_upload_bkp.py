@@ -1,5 +1,4 @@
-from flask import Blueprint, redirect, render_template, request, session, url_for, flash, jsonify, current_app
-import os
+from flask import Blueprint, redirect, render_template, request, session, url_for, flash, jsonify
 from werkzeug.security import check_password_hash, generate_password_hash
 from modules.time import convert_time_to_wib
 from datetime import datetime, timedelta, timezone
@@ -14,8 +13,6 @@ from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
 from datetime import datetime
 from flask_mysqldb import MySQL, MySQLdb
-from werkzeug.utils import secure_filename
-
 
 
 # LOCK REQUIRED TO LOGIN
@@ -233,7 +230,6 @@ def pr_temp_submit():
 
     # GET ENTITY AND DEPARTMENT
     from app import mysql
-    # import app
     cursor = mysql.connection.cursor()
     cursor.execute("SELECT id, entity, entity_name FROM entity")
     entities = cursor.fetchall()
@@ -324,32 +320,13 @@ def pr_temp_submit():
             '''
             cursor.executemany(insert_detail_query, items)
             mysql.connection.commit()
-
-
-        # HANDLE FILE UPLOADS
-        upload_files = request.files.getlist('files[]')
-        upload_docs = []
-        for i, file in enumerate(upload_files):
-            if file:
-                filename = secure_filename(file.filename)
-                upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-                file.save(upload_path)
-                upload_docs.append((no_pr, filename, upload_path, requester_name, today, requester_name, today))
-
-        if upload_docs:
-            insert_docs_query = '''
-                INSERT INTO pr_docs_reference (no_pr, doc_name, path, created_by, created_at, updated_by, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            '''
-            cursor.executemany(insert_docs_query, upload_docs)
-            mysql.connection.commit()
-        
         cursor.close()
         flash('New PR has been added', 'success')
 
         return redirect(url_for('pr.pr_list'))
     return render_template('pr/pr_temp.html', pr_number=pr_number, entities=entities, departments=departments, approver=approver)
     
+
 
 # SEQUENCE PR NUMBER
 def get_next_sequence(entity, department):

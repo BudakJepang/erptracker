@@ -149,7 +149,7 @@
               </div>
               <div class="form-group">
                 <label for="level">Change Role</label>
-                <select class="form-control" id="level" name="level" required>
+                <select class="form-control select2bs4" id="level" name="level" required>
                   <option selected></option>
                   <option value="admin" {% if user.level == 'admin' %}selected{% endif %}>Admin</option>
                   <option value="officer" {% if user.level == 'officer' %}selected{% endif %}>Officer</option>
