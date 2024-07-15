@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+
+{% block title %}List of Users{% endblock %}
+
+{% block content %}
+
+<div class="content-wrapper">
+  <!-- Content Header (Page header) -->
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1>Registration Form</h1>
+        </div>
+        <div class="col-sm-6">
+          <ol class="breadcrumb float-sm-right">
+            <li class="breadcrumb-item"><a href="#">Home</a></li>
+            <li class="breadcrumb-item active">Register User</li>
+          </ol>
+        </div>
+      </div>
+    </div><!-- /.container-fluid -->
+  </section>
+
+  <!-- Main content -->
+  <section class="content">
+    <div class="container-fluid">
+      <div class="row">
+        <!-- left column -->
+        <div class="col-md-12">
+          <!-- general form elements -->
+          <div class="card card-dark">
+            <div class="card-header">
+              <h3 class="card-title">Form</h3>
+            </div>
+            <!-- /.card-header -->
+            <!-- form start -->
+            <form action="{{ url_for('user.register') }}" method="post">
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label for="username">Username</label>
+                      <input type="text" class="form-control" id="username" placeholder="Masukkan Username" name="username" autocomplete="off" required>
+                    </div>
+                    <div class="form-group">
+                      <label for="email">Email address</label>
+                      <input type="email" class="form-control" id="email" placeholder="Masukkan email" name="email" autocomplete="off" required>
+                    </div>
+                    <div class="form-group">
+                      <label for="password">Password</label>
+                      <input type="password" class="form-control" id="password" placeholder="Password" name="password" autocomplete="off" required>
+                    </div>
+                    <div class="form-group">
+                      <label>Role</label>
+                      <select class="form-control select2bs4" name="level" id="level" style="width: 100%;" required>
+                        <option value="1">Super Admin</option>
+                        <option value="2">Admin</option>
+                        <option value="3">Officer</option>
+                        <option value="4">Appoval</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="col-md-3" style="margin-left: 100px;">
+                    <div class="form-group">
+                      <input class="custom-control-input" type="checkbox" id="en">
+                      <label>Entity</label>
+                      <input class="custom-control-input" type="checkbox">
+                      <div class="custom-control custom-checkbox">
+                        <input class="custom-control-input" type="checkbox" id="entityCheckAll">
+                        <label for="entityCheckAll" class="custom-control-label"></label>
+                      </div>
+                      <hr style="margin-bottom: 5px; margin-top: 5px;">
+                      {% for entity in all_entities %}
+                      <div class="custom-control custom-checkbox">
+                        <input class="custom-control-input" type="checkbox" id="entity{{ entity[0] }}" name="entities" value="{{ entity[0] }}">
+                        <label for="entity{{ entity[0] }}" class="custom-control-label">{{ entity[1] }}</label>
+                      </div>
+                      {% endfor %}
+                    </div>
+                    <!-- <div class="btn-group">
+                      <button type="button" class="btn btn-primary" onclick="checkAllEntity()"><i class="fa fa-check" aria-hidden="true"></i></button> 
+                      <button type="button" class="btn btn-default" onclick="uncheckAllEntity()"><i class="fa fa-check" aria-hidden="true"></i></button>
+                    </div> -->
+                    <hr>
+                  </div>
+                  <!-- <div class="col-md-3">
+                    <div class="form-group">
+                      <label for="password">Password</label>
+                      <input type="password" class="form-control" id="password" placeholder="Password" name="password" autocomplete="off" required>
+                    </div>
+                  </div> -->
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label>Department</label>
+                      <div class="custom-control custom-checkbox">
+                        <input class="custom-control-input" type="checkbox" id="departmentCheckAll">
+                        <label for="departmentCheckAll" class="custom-control-label"></label>
+                      </div>
+                      <hr style="margin-bottom: 5px; margin-top: 5px;">
+                      {% for department in all_department %}
+                      <div class="custom-control custom-checkbox">
+                        <input class="custom-control-input" type="checkbox" id="department{{ department[0] }}" name="department" value="{{ department[0] }}">
+                        <label for="department{{ department[0] }}" class="custom-control-label">{{ department[2] }}</label>
+                      </div>
+                      {% endfor %}
+                    </div>
+                    <!-- <div class="btn-group">
+                      <button type="button" class="btn btn-primary" onclick="checkAllDepartment()"><i class="fa fa-check" aria-hidden="true"></i></button> 
+                      <button type="button" class="btn btn-default" onclick="uncheckAllDepartment()"><i class="fa fa-check" aria-hidden="true"></i></button>
+                    </div> -->
+                    <hr>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label>Menu Access</label>
+                      <div class="custom-control custom-checkbox">
+                        <input class="custom-control-input" type="checkbox" id="menuCheckAll">
+                        <label for="menuCheckAll" class="custom-control-label"></label>
+                      </div>
+                      <hr style="margin-bottom: 5px; margin-top: 5px;">
+                      {% for menu in all_menus %}
+                      <div class="custom-control custom-checkbox">
+                        <input class="custom-control-input" type="checkbox" id="menu{{ menu[0] }}" name="menus" value="{{ menu[0] }}" 
+                        {% if menu[0] in current_menus %}checked{% endif %}>
+                        <label for="menu{{ menu[0] }}" class="custom-control-label">{{ menu[1] }}</label>
+                      </div>
+                      {% endfor %}
+                    </div>
+                    <!-- <div class="btn-group">
+                      <button type="button" class="btn btn-primary" onclick="checkAll()"><i class="fa fa-check" aria-hidden="true"></i></button> 
+                      <button type="button" class="btn btn-default" onclick="uncheckAll()"><i class="fa fa-check" aria-hidden="true"></i></button>
+                    </div> -->
+                  </div>
+                  <!-- <div class="col-md-3">
+                    <div class="form-group">
+                      <label>Entity</label>
+                      {% for entity in all_entities %}
+                      <div class="custom-control custom-checkbox">
+                        <input class="custom-control-input" type="checkbox" id="entity{{ entity[0] }}" name="entities" value="{{ entity[0] }}">
+                        <label for="entity{{ entity[0] }}" class="custom-control-label">{{ entity[1] }}</label>
+                      </div>
+                      {% endfor %}
+                    </div>
+                    <div class="btn-group">
+                      <button type="button" class="btn btn-default" onclick="checkAll()">Check All</button>
+                      <button type="button" class="btn btn-default" onclick="uncheckAll()">Uncheck All</button>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label>Department</label>
+                      {% for department in all_department %}
+                      <div class="custom-control custom-checkbox">
+                        <input class="custom-control-input" type="checkbox" id="entity{{ department[0] }}" name="department" value="{{ department[0] }}">
+                        <label for="entity{{ department[0] }}" class="custom-control-label">{{ department[2] }}</label>
+                      </div>
+                      {% endfor %}
+                    </div>
+                    <div class="btn-group">
+                      <button type="button" class="btn btn-default" onclick="checkAll()">Check All</button>
+                      <button type="button" class="btn btn-default" onclick="uncheckAll()">Uncheck All</button>
+                    </div>
+                  </div> -->
+                </div>
+              </div>
+              <!-- /.card-body -->
+              <div class="card-footer">
+                <button type="submit" class="btn btn-dark">Submit</button>
+                <a href="{{ url_for('user.user_list') }}" class="btn btn-danger" title="Back">Cancel</a>
+              </div>
+            </form>
+          </div>
+          <!-- /.card -->
+        </div>
+        <!--/.col (right) -->
+      </div>
+      <!-- /.row -->
+    </div><!-- /.container-fluid -->
+  </section>
+  <!-- /.content -->
+</div>
+<!-- /.content-wrapper -->
+
+
+
+
+<!-- Toastr Notifications -->
+<!-- jQuery for get data from db menu-->
+<script type="text/javascript">
+  $(document).ready(function() {
+      // Ketika modal dibuka
+      $('#modal-default').on('show.bs.modal', function() {
+          $.ajax({
+              url: "{{ url_for('user.get_menus') }}",
+              type: 'GET',
+              success: function(menus) {
+                  let menuCheckboxes = '';
+                  menus.forEach(function(menu) {
+                      menuCheckboxes += `
+                      <div class="custom-control custom-checkbox">
+                          <input class="custom-control-input" type="checkbox" id="menu${menu[0]}" name="menus" value="${menu[0]}">
+                          <label for="menu${menu[0]}" class="custom-control-label">${menu[1]}</label>
+                      </div>`;
+                  });
+                  $('#menu-checkboxes').html(menuCheckboxes);
+              }
+          });
+      });
+  });
+  </script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    toastr.{{ category }}("{{ message | safe }}");
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    });
+</script>
+
+<script>
+  function checkAll() {
+    var checkboxes = document.querySelectorAll('input[name="menus"]');
+    checkboxes.forEach((checkbox) => {
+      checkbox.checked = true;
+    });
+  }
+
+  function uncheckAll() {
+    var checkboxes = document.querySelectorAll('input[name="menus"]');
+    checkboxes.forEach((checkbox) => {
+      checkbox.checked = false;
+    });
+  }
+  
+  function checkAllEntity() {
+    var checkboxes = document.querySelectorAll('input[name="entities"]');
+    checkboxes.forEach((checkbox) => {
+      checkbox.checked = true;
+    });
+  }
+
+  function uncheckAllEntity() {
+    var checkboxes = document.querySelectorAll('input[name="entities"]');
+    checkboxes.forEach((checkbox) => {
+      checkbox.checked = false;
+    });
+  }
+
+  function checkAllDepartment() {
+    var checkboxes = document.querySelectorAll('input[name="department"]');
+    checkboxes.forEach((checkbox) => {
+      checkbox.checked = true;
+    });
+  }
+
+  function uncheckAllDepartment() {
+    var checkboxes = document.querySelectorAll('input[name="department"]');
+    checkboxes.forEach((checkbox) => {
+      checkbox.checked = false;
+    });
+  }
+</script>
+  {% endblock %}

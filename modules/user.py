@@ -45,6 +45,7 @@ def register():
         password = request.form['password']
         level = request.form['level']
         selected_menus = request.form.getlist('menus')  # ambil daftar menu yang dipilih dari view html
+        selected_entities = request.form.getlist('entities')  # ambil daftar entity yang dipilih dari view html
 
         cursor = mysql.connection.cursor()
         cursor.execute('SELECT username, email FROM user_accounts WHERE username=%s OR email=%s', (username, email))
@@ -67,6 +68,20 @@ def register():
                     VALUES (%s, %s, %s, %s, %s, %s)
                 ''', (user_id, menu_id, current_timestamp, current_timestamp, created_by, created_by))
             
+            # simpan data entity yang dipilih ke tabel user_entity
+            for entity_id in selected_entities:
+                cursor.execute('''
+                    INSERT INTO user_entity (user_id, entity_id, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s)
+                ''', (user_id, entity_id, current_timestamp, current_timestamp))
+
+            # simpan data department yang dipilih ke tabel user_department
+            for entity_id in selected_entities:
+                cursor.execute('''
+                    INSERT INTO user_department (user_id, department_id, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s)
+                ''', (user_id, entity_id, current_timestamp, current_timestamp))
+            
             mysql.connection.commit()
             cursor.close()
             flash('Registration Success', 'success')
@@ -74,8 +89,20 @@ def register():
         else:
             cursor.close()
             flash('Username or Email already exists', 'danger')
-            return redirect(url_for('user.user_list'))
-    return render_template('users/user_list.html')
+            return redirect(url_for('user.register'))
+    
+    # Ambil data menu dan entity dari database untuk ditampilkan di form
+    cursor = mysql.connection.cursor()
+    cursor.execute('SELECT id, menu_name FROM menu')
+    all_menus = cursor.fetchall()
+    cursor.execute('SELECT id, entity_name FROM entity')
+    all_entities = cursor.fetchall()
+    cursor.execute('SELECT id, department, department_name FROM department WHERE entity_id = 1')
+    all_department = cursor.fetchall()
+    cursor.close()
+    
+    return render_template('users/user_add.html', all_menus=all_menus, all_entities=all_entities, all_department=all_department)
+
 
 
 # CHANGE USER PASSWORD AS A USER

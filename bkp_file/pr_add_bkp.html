@@ -1,0 +1,102 @@
+<div class="content-wrapper">
+    <!-- Content Header (Page header) -->
+    <section class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1>Registration Form</h1>
+          </div>
+          <div class="col-sm-6">
+            <ol class="breadcrumb float-sm-right">
+              <li class="breadcrumb-item"><a href="#">Home</a></li>
+              <li class="breadcrumb-item active">Register User</li>
+            </ol>
+          </div>
+        </div>
+      </div><!-- /.container-fluid -->
+    </section>
+  
+    <!-- Main content -->
+    <section class="content">
+      <div class="container-fluid">
+        <div class="row">
+          <!-- left column -->
+          <div class="col-md-12">
+            <!-- general form elements -->
+            <div class="card card-dark">
+              <div class="card-header">
+                <h3 class="card-title">Form</h3>
+              </div>
+              <!-- /.card-header -->
+              <!-- form start -->
+              <form action="{{ url_for('user.register') }}" method="post">
+                <div class="card-body">
+                  <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" class="form-control" id="username" placeholder="Masukkan Username" name="username" autocomplete="off" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="email">Email address</label>
+                    <input type="email" class="form-control" id="email" placeholder="Masukkan email" name="email" autocomplete="off" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" class="form-control" id="password" placeholder="Password" name="password" autocomplete="off" required>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-4">
+                      <div class="form-group">
+                        <label>Role</label> 
+                        <select class="form-control select2bs4" name="level" id="level" style="width: 100%;" required>
+                          <option>Officer</option>
+                          <option>Admin</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-group">
+                        <label>Menu Access</label>
+                        {% for menu in all_menus %}
+                        <div class="custom-control custom-checkbox">
+                          <input class="custom-control-input" type="checkbox" id="menu{{ menu[0] }}" name="menus" value="{{ menu[0] }}" 
+                          {% if menu[0] in current_menus %}checked{% endif %}>
+                          <label for="menu{{ menu[0] }}" class="custom-control-label">{{ menu[1] }}</label>
+                        </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-group">
+                        <label>Entity Access</label>
+                        {% for entity in all_entities %}
+                        <div class="custom-control custom-checkbox">
+                          <input class="custom-control-input" type="checkbox" id="entity{{ entity[0] }}" name="entities" value="{{ entity[0] }}">
+                          <label for="entity{{ entity[0] }}" class="custom-control-label">{{ entity[1] }}</label>
+                        </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-default" onclick="checkAll()">Check All</button>
+                    <button type="button" class="btn btn-default" onclick="uncheckAll()">Uncheck All</button>
+                  </div>
+                </div>
+                <!-- /.card-body -->
+                <div class="card-footer">
+                  <button type="submit" class="btn btn-dark">Submit</button>
+                  <a href="{{ url_for('user.user_list') }}" class="btn btn-danger" title="Back">Cancel</a>
+                </div>
+              </form>
+            </div>
+            <!-- /.card -->
+          </div>
+          <!--/.col (right) -->
+        </div>
+        <!-- /.row -->
+      </div><!-- /.container-fluid -->
+    </section>
+    <!-- /.content -->
+  </div>
+  <!-- /.content-wrapper -->
+  

@@ -15,10 +15,13 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
 from datetime import datetime
 from flask_mysqldb import MySQL, MySQLdb
 from werkzeug.utils import secure_filename
+from modules.mail import pr_mail
 
 
 
-# LOCK REQUIRED TO LOGIN
+# ====================================================================================================================================
+# PR UTILITES
+# ====================================================================================================================================
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -30,59 +33,97 @@ def login_required(f):
 
 # BLUEPRINT AUTH VARIABLE
 pr_blueprint = Blueprint('pr', __name__)
+# ====================================================================================================================================
 
-# PR LIST
+
+# ====================================================================================================================================
+# PR MAIN LIST
+# ====================================================================================================================================
 @pr_blueprint.route('/pr_list')
 def pr_list():
     from app import mysql
     cursor = mysql.connection.cursor()
-    cursor.execute("SELECT * FROM purchase_requisition")
+    cursor.execute(
+        '''
+        WITH pr_main AS (
+            SELECT 
+            ph.no_pr,
+            ph.tanggal_permintaan,
+            ph.requester_name,
+            ph.nama_project,
+            ph.entity,
+            pd.item_no,
+            pd.nama_item,
+            pd.spesifikasi,
+            pd.qty,
+            pd.tanggal,
+            ph.total_budget_approved,
+            pdr.doc_name,
+            pdr.path,
+            ph.approval1_user_id,
+            ph.approval1_status,
+            ph.approval1_notes,
+            ph.approval2_user_id,
+            ph.approval2_status,
+            ph.approval2_notes,
+            ph.approval3_user_id,
+            ph.approval3_notes,
+            ph.approval3_status,
+            ph.created_at,
+            ph.updated_at 
+            FROM pr_header ph
+            LEFT JOIN pr_detail pd ON ph.no_pr = pd.no_pr 
+            LEFT JOIN pr_docs_reference pdr ON ph.no_pr = pdr.no_pr 
+        ),
+        account AS (
+            SELECT 
+            id,
+            username
+            FROM user_accounts
+        ),
+        main AS (
+        SELECT 
+            pr.no_pr,
+            pr.tanggal_permintaan,
+            pr.requester_name,
+            pr.nama_project,
+            pr.entity,
+            pr.item_no,
+            pr.nama_item,
+            pr.spesifikasi,
+            pr.qty,
+            pr.tanggal,
+            pr.total_budget_approved,
+            pr.doc_name,
+            pr.path,
+            acc1.username AS approval_1,
+            pr.approval1_status,
+            pr.approval1_notes,
+            acc2.username AS approval_2,
+            pr.approval2_status,
+            pr.approval2_notes,
+            acc3.username AS approval_3,
+            pr.approval3_notes,
+            pr.approval3_status,
+            pr.created_at,
+            pr.updated_at
+            FROM pr_main AS pr
+            LEFT JOIN account as acc1 ON pr.approval1_user_id = acc1.id 
+            LEFT JOIN account AS acc2 ON pr.approval2_user_id = acc2.id
+            LEFT JOIN account AS acc3 ON pr.approval3_user_id = acc3.id
+        )
+        SELECT * FROM main
+        '''
+    )
     data = cursor.fetchall()
     cursor.close()
     return render_template('pr/pr_list.html', data=data)
+# ====================================================================================================================================
 
 
-# PR ADD FORM
-@pr_blueprint.route('/pr_add')
-def pr_add():
-    return render_template('pr/pr_add.html')
-
-
-# SUBMIT PR
-@pr_blueprint.route('/pr_submit', methods=['POST'])
-def pr_submit():
-    from app import mysql
-    no_pr = request.form['no_pr']
-    username = request.form['username']
-    project_name = request.form['project_name']
-    entity = request.form['entity']
-    total_budget = float(request.form['total_budget'])
-    item_name = request.form['item_name']
-    item_description = request.form['item_description']
-    qty = int(request.form['qty'])
-    date_request = datetime.datetime.strptime(request.form['date_request'], '%Y-%m-%d')
-    due_date = datetime.datetime.strptime(request.form['due_date'], '%Y-%m-%d')
-    created_by = request.form['created_by']
-    updated_by = created_by  # samakan updated_at dengan created_at
-    approved_by_one = request.form['approved_by_one']
-    approved_by_two = request.form['approved_by_two']
-    approved_by_three = request.form['approved_by_three']
-    approved_by_four = request.form['approved_by_four']
-
-    cursor = mysql.connection.cursor()
-    query = '''INSERT INTO purchase_requisition 
-               (no_pr, username, project_name, entity, total_budget, item_name, item_description, qty, date_request, due_date, created_by, updated_by, approved_by_one, approved_by_two, approved_by_three, approved_by_four, created_at, updated_at)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())'''
-    cursor.execute(query, (no_pr, username, project_name, entity, total_budget, item_name, item_description, qty, date_request, due_date, created_by, updated_by, approved_by_one, approved_by_two, approved_by_three, approved_by_four))
-    mysql.connection.commit()
-    cursor.close()
-
-    # Assuming create_pdf is a function that generates a PDF
-    # create_pdf(no_pr, username, project_name, entity, total_budget, item_name, item_description, qty, date_request, due_date, created_by, approved_by_one, approved_by_two, approved_by_three, approved_by_four)
-
-    return redirect('/pr_list')
-
-# GENERATE PDF PR
+# ====================================================================================================================================
+# PR GENERATE PDF TEMP
+# ====================================================================================================================================
 @pr_blueprint.route('/generate_pdf', methods=['POST'])
 def generate_pdf():
     no_pr = request.form.get('no_pr')
@@ -226,6 +267,56 @@ def generate_pdf():
 
     buffer.seek(0)
     return send_file(buffer, as_attachment=True, download_name='purchase_requisition.pdf', mimetype='application/pdf')
+# ====================================================================================================================================
+
+
+# ====================================================================================================================================
+# PR FORM SUBMIT
+# ====================================================================================================================================
+
+# GET SEQUENCE PR AUTONUMBER
+def get_next_sequence(entity, department):
+    current_date = datetime.now()
+    current_month = current_date.month
+    current_year = current_date.year
+    from app import mysql
+
+    cursor = mysql.connection.cursor()
+    query = '''
+        SELECT pr_no FROM pr_autonum
+        WHERE entity = %s AND department = %s AND month = %s AND year = %s
+        ORDER BY created_at DESC LIMIT 1
+    '''
+    cursor.execute(query, (entity, department, current_month, current_year))
+    last_pr = cursor.fetchone()
+
+    if last_pr:
+        last_sequence_number = int(last_pr[0].split('-')[-1])
+        next_sequence_number = last_sequence_number + 1
+    else:
+        next_sequence_number = 1
+
+    cursor.close()
+    return next_sequence_number
+
+
+# EXTRACT AND JOIN PR AUTONUMBER BY DATE
+def generate_pr_number(entity, department):
+    current_date = datetime.now()
+    year_month = current_date.strftime('%y%m')
+    sequence_number = f"{get_next_sequence(entity, department):03d}"
+    pr_number = f"PR-{entity}-{department}-{year_month}-{sequence_number}"
+    return pr_number
+
+
+# MAIN PR SUBMIT 
+@pr_blueprint.route('/generate_pr', methods=['GET', 'POST'])
+def generate_pr():
+    data = request.json
+    entity = data['entity']
+    department = data['department']
+    pr_number = generate_pr_number(entity, department)
+    return jsonify({'pr_number': pr_number})
 
 @pr_blueprint.route('/pr_temp_submit', methods=['GET', 'POST'])
 def pr_temp_submit():
@@ -334,7 +425,7 @@ def pr_temp_submit():
                 filename = secure_filename(file.filename)
                 upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
                 file.save(upload_path)
-                upload_docs.append((no_pr, filename, upload_path, requester_name, today, requester_name, today))
+                upload_docs.append((no_pr, filename, upload_path, requester_id, today, requester_id, today))
 
         if upload_docs:
             insert_docs_query = '''
@@ -345,63 +436,9 @@ def pr_temp_submit():
             mysql.connection.commit()
         
         cursor.close()
+        pr_mail(no_pr, entity, department, nama_project, tanggal_permintaan, total_budget_approved, tanggal, approval2_user_id)
         flash('New PR has been added', 'success')
 
         return redirect(url_for('pr.pr_list'))
     return render_template('pr/pr_temp.html', pr_number=pr_number, entities=entities, departments=departments, approver=approver)
-    
-
-# SEQUENCE PR NUMBER
-def get_next_sequence(entity, department):
-    current_date = datetime.now()
-    current_month = current_date.month
-    current_year = current_date.year
-    from app import mysql
-
-    cursor = mysql.connection.cursor()
-    query = '''
-        SELECT pr_no FROM pr_autonum
-        WHERE entity = %s AND department = %s AND month = %s AND year = %s
-        ORDER BY created_at DESC LIMIT 1
-    '''
-    cursor.execute(query, (entity, department, current_month, current_year))
-    last_pr = cursor.fetchone()
-
-    if last_pr:
-        last_sequence_number = int(last_pr[0].split('-')[-1])
-        next_sequence_number = last_sequence_number + 1
-    else:
-        next_sequence_number = 1
-
-    cursor.close()
-    return next_sequence_number
-
-def generate_pr_number(entity, department):
-    current_date = datetime.now()
-    year_month = current_date.strftime('%y%m')
-    sequence_number = f"{get_next_sequence(entity, department):03d}"
-    pr_number = f"PR-{entity}-{department}-{year_month}-{sequence_number}"
-    
-    # from app import mysql
-    # cursor = mysql.connection.cursor()
-    # try:
-    #     cursor.execute("INSERT INTO pr_autonum (entity, department, month, year, pr_no) VALUES (%s, %s, %s, %s, %s)",
-    #                    (entity, department, current_date.month, current_date.year, pr_number))
-    #     mysql.connection.commit()
-    # except MySQLdb.IntegrityError as e:
-    #     if e.args[0] == 1062:  # Duplicate entry error
-    #         sequence_number = f"{get_next_sequence(entity, department):03d}"
-    #         pr_number = f"PR-{entity}-{department}-{year_month}-{sequence_number}"
-    #         cursor.execute("INSERT INTO pr_autonum (entity, department, month, year, pr_no) VALUES (%s, %s, %s, %s, %s)",
-    #                        (entity, department, current_date.month, current_date.year, pr_number))
-    #         mysql.connection.commit()
-    # cursor.close()
-    return pr_number
-
-@pr_blueprint.route('/generate_pr', methods=['GET', 'POST'])
-def generate_pr():
-    data = request.json
-    entity = data['entity']
-    department = data['department']
-    pr_number = generate_pr_number(entity, department)
-    return jsonify({'pr_number': pr_number})
+# ==========================================================================================================================================
