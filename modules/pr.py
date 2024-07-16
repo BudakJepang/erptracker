@@ -309,7 +309,7 @@ def generate_pr_number(entity, department):
     return pr_number
 
 
-# MAIN PR SUBMIT 
+# EXTRACT AND JOIN PR AUTONUMBER BY DATE
 @pr_blueprint.route('/generate_pr', methods=['GET', 'POST'])
 def generate_pr():
     data = request.json
@@ -318,25 +318,37 @@ def generate_pr():
     pr_number = generate_pr_number(entity, department)
     return jsonify({'pr_number': pr_number})
 
+
+# MAIN PR SUBMIT 
 @pr_blueprint.route('/pr_temp_submit', methods=['GET', 'POST'])
 def pr_temp_submit():
     pr_number = None
 
     # GET ENTITY AND DEPARTMENT
     from app import mysql
-    # import app
-    cursor = mysql.connection.cursor()
-    cursor.execute("SELECT id, entity, entity_name FROM entity")
-    entities = cursor.fetchall()
 
-    cursor.execute("SELECT id, entity_id, department, department_name FROM department")
+    # get user by entities form session
+    user_entities = session.get('entities', [])
+
+    # convert entities to list id if user have access more than 1 entity
+    entity_ids = [entity['entity_id'] for entity in user_entities]
+    cursor = mysql.connection.cursor()
+
+    if entity_ids:
+        cursor.execute("SELECT id, entity, entity_name FROM entity WHERE id IN %s", (tuple(entity_ids),))
+        entities = cursor.fetchall()
+    else:
+        entities = []
+
+    # get department list
+    cursor.execute("SELECT id, entity_id, department, department_name FROM department WHERE entity_id = 1")
     departments = cursor.fetchall()
 
-    cursor.execute("SELECT id, username, email FROM user_accounts")
+    # get approval list
+    cursor.execute("SELECT id, username, email FROM user_accounts WHERE level = 4")
     approver = cursor.fetchall()
     
     if request.method == 'POST':
-
         # VARIABLE PR HEADER
         entity = request.form['entity']
         department = request.form['department']
@@ -387,6 +399,7 @@ def pr_temp_submit():
                 approval1_user_id ,approval1_notes ,approval2_status ,approval2_user_id ,approval2_notes ,approval3_status ,approval3_user_id ,approval3_notes ,created_at ,updated_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         '''
+
         # EXECUTION QUERY FOR TABLE PR_HEADER
         today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         cursor.execute(insert_header_query, (no_pr, tanggal_permintaan, requester_id, requester_name, nama_project, entity, total_budget_approved, remarks, approval1_status,

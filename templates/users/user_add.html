@@ -78,7 +78,7 @@
                   </div>
                   <hr>
                 </div>
-                <div class="col-md-3" style="margin-left: 50px;">
+                <!-- <div class="col-md-3" style="margin-left: 50px;">
                   <div class="form-group">
                     <label>Department</label>
                     <div class="custom-control custom-checkbox">
@@ -92,9 +92,9 @@
                       <label for="department{{ department[0] }}" class="custom-control-label">{{ department[2] }}</label>
                     </div>
                     {% endfor %}
-                  </div>
-                  <hr>
-                </div>
+                  </div> -->
+                  <!-- <hr> -->
+                <!-- </div> -->
               </div>
               <div class="row">
                 <div class="col-md-3">
@@ -143,12 +143,12 @@
     });
   });
 
-  document.getElementById('departmentCheckAll').addEventListener('change', function() {
-    let departmentCheckboxes = document.querySelectorAll('.department-checkbox');
-    departmentCheckboxes.forEach(checkbox => {
-      checkbox.checked = this.checked;
-    });
-  });
+  // document.getElementById('departmentCheckAll').addEventListener('change', function() {
+  //   let departmentCheckboxes = document.querySelectorAll('.department-checkbox');
+  //   departmentCheckboxes.forEach(checkbox => {
+  //     checkbox.checked = this.checked;
+  //   });
+  // });
 
   document.getElementById('menuCheckAll').addEventListener('change', function() {
     let menuCheckboxes = document.querySelectorAll('.menu-checkbox');

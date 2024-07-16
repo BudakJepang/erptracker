@@ -61,10 +61,10 @@ def register():
             mysql.connection.commit()
             user_id = cursor.lastrowid  # get ID user yang baru saja dibuat
 
-            # simpan data menu yang dipilih ke tabel access_users
+            # simpan data menu yang dipilih ke tabel user_access
             for menu_id in selected_menus:
                 cursor.execute('''
-                    INSERT INTO access_users (id_user, id_menu, created_at, updated_at, created_by, updated_by)
+                    INSERT INTO user_access (id_user, id_menu, created_at, updated_at, created_by, updated_by)
                     VALUES (%s, %s, %s, %s, %s, %s)
                 ''', (user_id, menu_id, current_timestamp, current_timestamp, created_by, created_by))
             
@@ -72,13 +72,6 @@ def register():
             for entity_id in selected_entities:
                 cursor.execute('''
                     INSERT INTO user_entity (user_id, entity_id, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s)
-                ''', (user_id, entity_id, current_timestamp, current_timestamp))
-
-            # simpan data department yang dipilih ke tabel user_department
-            for entity_id in selected_entities:
-                cursor.execute('''
-                    INSERT INTO user_department (user_id, department_id, created_at, updated_at)
                     VALUES (%s, %s, %s, %s)
                 ''', (user_id, entity_id, current_timestamp, current_timestamp))
             
@@ -199,7 +192,7 @@ def user_edit(user_id):
     all_menus = cursor.fetchall() # value ini akan kita kirim pada list menu checkbox HTML untuk dilooping
     
     # get access menu untuk user apa saja listnya
-    cursor.execute('SELECT id_menu FROM access_users WHERE id_user = %s', (user_id,))
+    cursor.execute('SELECT id_menu FROM user_access WHERE id_user = %s', (user_id,))
     current_menus = cursor.fetchall()
     current_menus = {menu[0] for menu in current_menus}
     
@@ -224,13 +217,13 @@ def user_edit(user_id):
 
         # delete menu yang dimiliki user jika mau ditakedown accessnya
         if menus_to_remove:
-            cursor.executemany('DELETE FROM access_users WHERE id_user = %s AND id_menu = %s', 
+            cursor.executemany('DELETE FROM user_access WHERE id_user = %s AND id_menu = %s', 
                                [(user_id, menu_id) for menu_id in menus_to_remove])
         
         # menambahkan menu pada user
         for menu_id in menus_to_add:
             cursor.execute('''
-                INSERT INTO access_users (id_user, id_menu, created_at, updated_at, created_by, updated_by)
+                INSERT INTO user_access (id_user, id_menu, created_at, updated_at, created_by, updated_by)
                 VALUES (%s, %s, %s, %s, %s, %s)
             ''', (user_id, menu_id, current_timestamp, current_timestamp, updated_by, updated_by))
         

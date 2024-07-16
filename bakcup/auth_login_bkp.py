@@ -23,7 +23,6 @@ def login():
         cursor.execute('SELECT id, username, email, password, level FROM user_accounts WHERE email=%s', (email,))
         account = cursor.fetchone()
         
-        # account validation 
         if account is None:
             flash('Login failed, please check your username', 'danger')
         elif not check_password_hash(account[3], password):
@@ -34,17 +33,6 @@ def login():
             session['id'] = account[0]
             session['username'] = account[1]
             session['level'] = account[4]
-
-            # get filter user as entity
-            cursor.execute('''
-                SELECT ue.entity_id, e.entity_name
-                FROM user_entity ue
-                LEFT JOIN entity e ON ue.entity_id = e.id
-                WHERE ue.user_id = %s
-            ''', (account[0],))
-            entities = cursor.fetchall()
-            session['entities'] = [{'entity_id': entity[0], 'entity_name': entity[1]} for entity in entities]
-            cursor.close()
             return redirect(url_for('index'))
         
     return render_template('auth/login.html')

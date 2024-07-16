@@ -14,10 +14,10 @@ import pandas as pd
 # ================================================================================================================
 def appFlask():
     app = Flask(__name__)
-    # app.config['MYSQL_HOST'] = '10.0.13.247' # DB HOST OFFICE
+    app.config['MYSQL_HOST'] = '10.0.13.247' # DB HOST OFFICE
     # app.config['MYSQL_HOST'] = '10.0.12.53' # DB HOST ONPREM
     # app.config['MYSQL_HOST'] = '192.168.1.18' # DB HOST HOME
-    app.config['MYSQL_HOST'] = '10.1.1.3' # DB HOST HOME
+    # app.config['MYSQL_HOST'] = '10.1.1.3' # DB HOST HOME
     app.config['MYSQL_USER'] = 'rohman'
     # app.config['MYSQL_USER'] = 'data-tech'
     app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
@@ -76,7 +76,7 @@ def get_menu_data(user_id):
         m.id as menu_id
         FROM category_menu as cat
         LEFT JOIN menu AS m on cat.id = m.id_category
-        LEFT JOIN access_users AS au on m.id = au.id_menu 
+        LEFT JOIN user_access AS au on m.id = au.id_menu 
         WHERE au.id_user = %s
     ''', (user_id,))
     data = cursor.fetchall()
@@ -131,7 +131,7 @@ def check_access(menu_id):
                 return redirect(url_for('login'))
 
             cursor = mysql.connection.cursor()
-            cursor.execute('SELECT 1 FROM access_users WHERE user_id = %s AND menu_id = %s', (user_id, menu_id))
+            cursor.execute('SELECT 1 FROM user_access WHERE user_id = %s AND menu_id = %s', (user_id, menu_id))
             access = cursor.fetchone()
             cursor.close()
 
@@ -161,7 +161,7 @@ def index():
 # ================================================================================================================
 
 if __name__ == '__main__':
-    app.run(host='10.1.1.3', port=5000, debug=True)
-    # app.run(host='10.0.13.247', port=5000, debug=True)
+    # app.run(host='10.1.1.3', port=5000, debug=True)
+    app.run(host='10.0.13.247', port=5000, debug=True)
     # app.run(host='10.0.13.53', port=5000, debug=True)
     # app.run(host='192.168.1.18', port=5000, debug=True)
