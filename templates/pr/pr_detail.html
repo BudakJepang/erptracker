@@ -40,6 +40,7 @@
               <div class="col-12">
                 <h4>
                   <img src="{{ url_for('static', filename='entity_logo/v.png') }}" height="60" width="60"> Purchase Requisition, (PR).
+                  <!-- <img src="" height="60" width="60"> Purchase Requisition, (PR). -->
                   <small class="float-right">{{ data[0][27] }}</small>
                 </h4>
               </div>
@@ -129,42 +130,53 @@
               </div>
               <!-- /.col -->
             </div>
-            <div class="row" style="padding-top: 20px;">
-              <div class="col-12">
-                <table class="" style="width:100%;">
-                  <thead>
-                    <tr>
-                      <th style="text-align: center; width:20%">Dibuat Oleh</th>
-                      <th style="text-align: center; width:20%"></th>
-                      <th style="text-align: left; width:20%">Disetujui Oleh</th>
-                      <th style="text-align: center; width:20%"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr style="height: 100px;">
-                      <td></td>  
-                      <td></td>
-                      <td></td>  
-                      <td></td>
-                    </tr>
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <td style="text-align: center; font-weight: bold;">({{ data[0][3] }})</td>
-                      <td style="text-align: center; font-weight: bold;">({{ data[0][11] }})</td>
-                      <td style="text-align: center; font-weight: bold;">({{ data[0][15] }})</td>
-                      <td style="text-align: center; font-weight: bold;">({{ data[0][19] }})</td>
-                    </tr>
-                  </tfoot>
-                </table>
+            <hr>
+
+            <!-- info row -->
+            <div class="row invoice-info" style="padding-top: 10px;">
+                <div class="col-sm-12 invoice-col">
+                  <address>
+                    <table class="" style="width:100%; border-spacing: 0;">
+                      <tr>
+                        <td style="text-align: left; width: 15%; padding-top: 10px;">Dibuat Oleh</td>
+                        <td style="text-align: left; width: 1%; padding-top: 10px;">:</td>
+                        <td style="text-align: left; width: 65%; font-weight: bold; padding-top: 10px;">{{ data[0][3] }}</td>  
+                      </tr>
+                      <tr>
+                        <td style="text-align: left; width: 15%; padding-top: 10px;">Disetujui Oleh</td>
+                        <td style="text-align: left; width: 1%; padding-top: 10px;">:</td>
+                        <td style="text-align: left; width: 65%; font-weight: bold; padding-top: 10px;">{{ data[0][11] }}</td>  
+                      </tr>
+                      <tr>
+                        <td style="text-align: left; width: 15%; padding-top: 10px;">Status Persetujuan</td>
+                        <td style="text-align: left; width: 1%; padding-top: 10px;">:</td>
+                        <td style="text-align: left; width: 65%; font-weight: bold; padding-top: 10px;">{{ data[0][12] }}</td>  
+                      </tr>
+                      <tr>
+                        <td style="text-align: left; width: 15%; padding-top: 10px; padding-top: 10px;">Action</td>
+                        <td style="text-align: left; width: 1%; padding-top: 10px;">:</td>
+                        <td style="padding-top: 10px;">
+                            <!-- <button type="button" class="btn bg-gradient-danger btn-sm"><i class="fa fa-file-pdf" title="PDF Preview"></i></button> -->
+                            <!-- <a href="{{ url_for('pr.pr_detail_page', no_pr=data[0]) }}"class="btn btn-success btn-sm" title="Detail"><i class="fa fa-check" aria-hidden="true"></i> APPROVE</a>
+                            <a href="{{ url_for('pr.pr_detail_page', no_pr=data[0]) }}"class="btn btn-danger btn-sm" title="Detail"><i class="fa fa-times" aria-hidden="true"></i> REJECT</a> -->
+                            <button type="button" class="btn btn-success btn-sm" title="Approve PR" data-toggle="modal" data-target="#modal-approve" data-id="">
+                                <i class="fa fa-check" aria-hidden="true"></i> APPROVED
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm" title="Approve PR" data-toggle="modal" data-target="#modal-reject" data-id="">
+                                <i class="fa fa-times" aria-hidden="true"></i> REJECT
+                            </button>
+                        </td>
+                      </tr>
+                    </table>
+                  </address>
+                </div>
               </div>
-            </div>
             <!-- /.col -->
             <!-- this row will not appear when printing -->
             <div class="row no-print" style="padding-top: 50px; padding-bottom: 50px">
               <div class="col-12">
                 <!-- <a href="invoice-print.html" rel="noopener" target="_blank" class="btn btn-default"><i class="fas fa-print"></i> Print</a> -->
-                <a href="{{ url_for('pr.pr_list') }}" class="btn btn-dark float-right" title="Detail">Back to list</a>
+                <a href="{{ url_for('pr.pr_list') }}" class="btn btn-default float-right" title="Detail">Back to list</a>
                 <button type="button" class="btn btn-danger float-right" style="margin-right: 5px;">
                     <i class="fa fa-file-pdf" aria-hidden="true"></i> Generate PDF
                 </button>
@@ -178,7 +190,69 @@
   </section>
   <!-- /.content -->
   
-  
+<!-- APPROVE MODAL -->
+<div class="modal fade" id="modal-approve">
+    <div class="modal-dialog">
+      <div class="modal-content bg-success">
+        <div class="modal-header">
+          <h4 class="modal-title">You will approve this PR</h4>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <form action="{{ url_for('user.register') }}" method="POST">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="exampleInputEmail1">Reason Approved</label>
+            <textarea class="form-control" rows="3" id="spesifikasi1" name="spesifikasi1" placeholder="Enter ..." required></textarea>
+          </div>
+            <div class="form-group">
+            <div id="menu-checkboxes">
+              </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-default">Save</button>
+        </div>
+      </form>
+      </div>
+      <!-- /.modal-content -->
+    </div>
+  </div>
+  <!--END APPROVE MODAL -->
+
+<!-- APPROVE MODAL -->
+<div class="modal fade" id="modal-reject">
+    <div class="modal-dialog">
+      <div class="modal-content bg-danger">
+        <div class="modal-header">
+          <h4 class="modal-title">You will Reject this PR</h4>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <form action="{{ url_for('user.register') }}" method="POST">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="exampleInputEmail1">Reason Rejected</label>
+            <textarea class="form-control" rows="3" id="spesifikasi1" name="spesifikasi1" placeholder="Enter ..." required></textarea>
+          </div>
+            <div class="form-group">
+            <div id="menu-checkboxes">
+              </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-default">Save</button>
+        </div>
+      </form>
+      </div>
+      <!-- /.modal-content -->
+    </div>
+  </div>
+  <!--END APPROVE MODAL -->
 
 <!--END MAIN CONTENT -->
 

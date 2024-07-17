@@ -35,29 +35,29 @@
           </div>
           <!-- /.card-header -->
           <!-- form start -->
-          <form action="{{ url_for('user.register', user_id=user[0] if user else None) }}" method="post">
+          <form action="{{ url_for('user.register') }}" method="post">
             <div class="card-body">
               <div class="row">
                 <div class="col-md-3">
                   <div class="form-group">
                     <label for="username">Username</label>
-                    <input type="text" class="form-control" id="username" name="username" value="{{ user[1] if user else '' }}" placeholder="Masukkan Username" autocomplete="off" required>
+                    <input type="text" class="form-control" id="username" placeholder="Masukkan Username" name="username" autocomplete="off" required>
                   </div>
                   <div class="form-group">
                     <label for="email">Email address</label>
-                    <input type="email" class="form-control" id="email" name="email" value="{{ user[2] if user else '' }}" placeholder="Masukkan email" autocomplete="off" required>
+                    <input type="email" class="form-control" id="email" placeholder="Masukkan email" name="email" autocomplete="off" required>
                   </div>
                   <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" class="form-control" id="password" name="password" placeholder="Password" autocomplete="off" {% if not user %}required{% endif %}>
+                    <input type="password" class="form-control" id="password" placeholder="Password" name="password" autocomplete="off" required>
                   </div>
                   <div class="form-group">
                     <label>Role</label>
                     <select class="form-control select2bs4" name="level" id="level" style="width: 100%;" required>
-                      <option value="1" {% if user and user[4] == 1 %}selected{% endif %}>Super Admin</option>
-                      <option value="2" {% if user and user[4] == 2 %}selected{% endif %}>Admin</option>
-                      <option value="3" {% if user and user[4] == 3 %}selected{% endif %}>Officer</option>
-                      <option value="4" {% if user and user[4] == 4 %}selected{% endif %}>Approval</option>
+                      <option value="1">Super Admin</option>
+                      <option value="2">Admin</option>
+                      <option value="3">Officer</option>
+                      <option value="4">Approval</option>
                     </select>
                   </div>
                 </div>
@@ -71,13 +71,32 @@
                     <hr style="margin-bottom: 5px; margin-top: 5px;">
                     {% for entity in all_entities %}
                     <div class="custom-control custom-checkbox">
-                      <input class="custom-control-input entity-checkbox" type="checkbox" id="entity{{ entity[0] }}" name="entities" value="{{ entity[0] }}" {% if entity[0] in user_entities %}checked{% endif %}>
+                      <input class="custom-control-input entity-checkbox" type="checkbox" id="entity{{ entity[0] }}" name="entities" value="{{ entity[0] }}">
                       <label for="entity{{ entity[0] }}" class="custom-control-label">{{ entity[1] }}</label>
                     </div>
                     {% endfor %}
                   </div>
                   <hr>
                 </div>
+                <!-- <div class="col-md-3" style="margin-left: 50px;">
+                  <div class="form-group">
+                    <label>Department</label>
+                    <div class="custom-control custom-checkbox">
+                      <input class="custom-control-input" type="checkbox" id="departmentCheckAll">
+                      <label for="departmentCheckAll" class="custom-control-label">Check All</label>
+                    </div>
+                    <hr style="margin-bottom: 5px; margin-top: 5px;">
+                    {% for department in all_department %}
+                    <div class="custom-control custom-checkbox">
+                      <input class="custom-control-input department-checkbox" type="checkbox" id="department{{ department[0] }}" name="department" value="{{ department[0] }}">
+                      <label for="department{{ department[0] }}" class="custom-control-label">{{ department[2] }}</label>
+                    </div>
+                    {% endfor %}
+                  </div> -->
+                  <!-- <hr> -->
+                <!-- </div> -->
+              </div>
+              <div class="row">
                 <div class="col-md-3">
                   <div class="form-group">
                     <label>Menu Access</label>
@@ -88,7 +107,7 @@
                     <hr style="margin-bottom: 5px; margin-top: 5px;">
                     {% for menu in all_menus %}
                     <div class="custom-control custom-checkbox">
-                      <input class="custom-control-input menu-checkbox" type="checkbox" id="menu{{ menu[0] }}" name="menus" value="{{ menu[0] }}" {% if menu[0] in user_menus %}checked{% endif %}>
+                      <input class="custom-control-input menu-checkbox" type="checkbox" id="menu{{ menu[0] }}" name="menus" value="{{ menu[0] }}" {% if menu[0] in current_menus %}checked{% endif %}>
                       <label for="menu{{ menu[0] }}" class="custom-control-label">{{ menu[1] }}</label>
                     </div>
                     {% endfor %}
@@ -97,14 +116,12 @@
                 </div>
               </div>
             </div>
+            <!-- /.card-body -->
             <div class="card-footer">
               <button type="submit" class="btn btn-dark">Submit</button>
               <a href="{{ url_for('user.user_list') }}" class="btn btn-danger" title="Back">Cancel</a>
             </div>
           </form>
-          
-          
-          
         </div>
         <!-- /.card -->
       </div>

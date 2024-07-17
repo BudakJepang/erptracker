@@ -36,56 +36,78 @@ def user_list():
 
 # REGISTRATION AND ACCESS USER
 @user_blueprint.route('/register', methods=('GET', 'POST'))
+@user_blueprint.route('/register/<int:user_id>', methods=('GET', 'POST'))
 @login_required
-def register():
+def register(user_id=None):
     from app import mysql
+    cursor = mysql.connection.cursor()
+
+    user = None
+    user_menus = []
+    user_entities = []
+
+    if user_id:
+        cursor.execute('SELECT * FROM user_accounts WHERE id=%s', (user_id,))
+        user = cursor.fetchone()
+
+        cursor.execute('SELECT id_menu FROM user_access WHERE id_user=%s', (user_id,))
+        user_menus = [row[0] for row in cursor.fetchall()]
+
+        cursor.execute('SELECT entity_id FROM user_entity WHERE user_id=%s', (user_id,))
+        user_entities = [row[0] for row in cursor.fetchall()]
+
     if request.method == 'POST':
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
         level = request.form['level']
-        selected_menus = request.form.getlist('menus')  # ambil daftar menu yang dipilih dari view html
-        selected_entities = request.form.getlist('entities')  # ambil daftar entity yang dipilih dari view html
-
-        cursor = mysql.connection.cursor()
-        cursor.execute('SELECT username, email FROM user_accounts WHERE username=%s OR email=%s', (username, email))
-        account = cursor.fetchone()
+        selected_menus = request.form.getlist('menus')
+        selected_entities = request.form.getlist('entities')
         
-        if account is None:
-            current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            created_by = session.get('username', 'system')  # get the username of the logged in user or 'system'
-            cursor.execute('''
-                INSERT INTO user_accounts (username, email, password, level, created_at, updated_at, created_by, updated_by) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            ''', (username, email, generate_password_hash(password), level, current_timestamp, current_timestamp, created_by, created_by))
-            mysql.connection.commit()
-            user_id = cursor.lastrowid  # get ID user yang baru saja dibuat
+        current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        created_by = session.get('username', 'system')
 
-            # simpan data menu yang dipilih ke tabel user_access
-            for menu_id in selected_menus:
-                cursor.execute('''
-                    INSERT INTO user_access (id_user, id_menu, created_at, updated_at, created_by, updated_by)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                ''', (user_id, menu_id, current_timestamp, current_timestamp, created_by, created_by))
-            
-            # simpan data entity yang dipilih ke tabel user_entity
-            for entity_id in selected_entities:
-                cursor.execute('''
-                    INSERT INTO user_entity (user_id, entity_id, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s)
-                ''', (user_id, entity_id, current_timestamp, current_timestamp))
-            
-            mysql.connection.commit()
-            cursor.close()
-            flash('Registration Success', 'success')
-            return redirect(url_for('user.user_list'))
+        if user_id:
+            cursor.execute('''
+                UPDATE user_accounts
+                SET username=%s, email=%s, password=%s, level=%s, updated_at=%s, updated_by=%s
+                WHERE id=%s
+            ''', (username, email, generate_password_hash(password), level, current_timestamp, created_by, user_id))
+
+            cursor.execute('DELETE FROM user_access WHERE id_user=%s', (user_id,))
+            cursor.execute('DELETE FROM user_entity WHERE user_id=%s', (user_id,))
         else:
-            cursor.close()
-            flash('Username or Email already exists', 'danger')
-            return redirect(url_for('user.register'))
-    
-    # Ambil data menu dan entity dari database untuk ditampilkan di form
-    cursor = mysql.connection.cursor()
+            cursor.execute('SELECT username, email FROM user_accounts WHERE username=%s OR email=%s', (username, email))
+            account = cursor.fetchone()
+
+            if account is None:
+                cursor.execute('''
+                    INSERT INTO user_accounts (username, email, password, level, created_at, updated_at, created_by, updated_by) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (username, email, generate_password_hash(password), level, current_timestamp, current_timestamp, created_by, created_by))
+                mysql.connection.commit()
+                user_id = cursor.lastrowid
+            else:
+                flash('Username or Email already exists', 'danger')
+                return redirect(url_for('user.register'))
+
+        for menu_id in selected_menus:
+            cursor.execute('''
+                INSERT INTO user_access (id_user, id_menu, created_at, updated_at, created_by, updated_by)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            ''', (user_id, menu_id, current_timestamp, current_timestamp, created_by, created_by))
+
+        for entity_id in selected_entities:
+            cursor.execute('''
+                INSERT INTO user_entity (user_id, entity_id, created_at, updated_at)
+                VALUES (%s, %s, %s, %s)
+            ''', (user_id, entity_id, current_timestamp, current_timestamp))
+
+        mysql.connection.commit()
+        cursor.close()
+        flash('User saved successfully', 'success')
+        return redirect(url_for('user.user_list'))
+
     cursor.execute('SELECT id, menu_name FROM menu')
     all_menus = cursor.fetchall()
     cursor.execute('SELECT id, entity_name FROM entity')
@@ -93,9 +115,8 @@ def register():
     cursor.execute('SELECT id, department, department_name FROM department WHERE entity_id = 1')
     all_department = cursor.fetchall()
     cursor.close()
-    
-    return render_template('users/user_add.html', all_menus=all_menus, all_entities=all_entities, all_department=all_department)
 
+    return render_template('users/user_add.html', user=user, user_menus=user_menus, user_entities=user_entities, all_menus=all_menus, all_entities=all_entities, all_department=all_department)
 
 
 # CHANGE USER PASSWORD AS A USER

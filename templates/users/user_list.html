@@ -65,7 +65,9 @@
                             <td>{{ user[6] }}</td>
                             <td>{{ user[7] }}</td>
                             <td>
-                              <a href="{{ url_for('user.user_edit', user_id=user[0]) }}" class="btn btn-default btn-sm" title="Edit User"><i class="fa fa-edit"></i></a>
+                              <a href="{{ url_for('user.register', user_id=user[0]) }}" class="btn btn-default btn-sm" title="Edit User">
+                                <i class="fa fa-edit"></i>
+                              </a>
                               <button type="button" class="btn btn-outline-danger btn-sm" title="Delete User" data-toggle="modal" data-target="#modal-danger" data-id="{{ user[0] }}" data-username="{{ user[1] }}" data-email="{{ user[2] }}" data-level="{{ user[3] }}">
                                 <i class="fa fa-trash"></i>
                               </button>

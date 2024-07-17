@@ -62,10 +62,11 @@
                             <td>{{ data[21] }}</td>
                             <td style="text-align: right;">{{ "{:,.0f}".format(data[7]) }}</td>
                             <td>{{ data[12] }}</td>
-                            <td>{{ data[9] }}</td>                            <td>
+                            <td>{{ data[9] }}</td>                            
+                            <td>
                               <!-- <button type="button" class="btn bg-gradient-danger btn-sm"><i class="fa fa-file-pdf" title="PDF Preview"></i></button> -->
                               <a href="{{ url_for('pr.pr_detail_page', no_pr=data[0]) }}"class="btn btn-default btn-sm" title="Detail"><i class="fa fa-info-circle" aria-hidden="true"></i></a>
-                          </td>
+                            </td>
                             <!-- PUT ACTION BUTTON HERE-->
                           </tr>
                           {% endfor %}
