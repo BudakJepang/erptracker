@@ -23,7 +23,7 @@ def appFlask():
     app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
     # app.config['MYSQL_PASSWORD'] = '!@#Bismill4h'
     app.config['MYSQL_DB'] = 'playground'
-    app.config['UPLOAD_FOLDER'] = 'uploads'
+    app.config['UPLOAD_FOLDER'] = 'static/uploads'
     app.config['MAX_CONTENT_PATH'] = 16 * 1024 * 1024  # 16 MB max file size
     app.secret_key = 'testing'
     return app

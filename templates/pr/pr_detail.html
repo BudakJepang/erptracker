@@ -32,7 +32,7 @@
 <section class="content">
     <div class="container-fluid">
       <div class="row">
-        <div class="col-12">
+        <div class="col-md-12">
           <!-- Main content -->
           <div class="invoice p-3 mb-3">
             <!-- title row -->
@@ -84,12 +84,12 @@
               </div>
             </div>
             <!-- /.row -->
-            <hr style="padding-top: 10px;">
-            <p style="text-align: center; font-size: 20px; font-weight: bold;">Item / Service Invoice</p>
+            <hr>
+            <!-- <p style="text-align: center; font-size: 20px; font-weight: bold;">Item / Service Invoice</p> -->
             <!-- Table row -->
             <div class="row">
-              <div class="col-12 table-responsive">
-                <table class="table table-striped">
+              <div class="col-md-12">
+                <table class="table table-bordered">
                   <thead>
                     <tr style="text-align: center;">
                       <th>No</th>
@@ -118,9 +118,9 @@
             <!-- /.row -->
   
             <div class="row">
-              <!-- accepted payments column -->
-              <div class="col-6">
+              <div class="col-md-6">
                 <p class="lead">Remarks:</p>
+                <hr>
                 <p class="text-muted well well-sm shadow-none" style="margin-top: 10px; padding-left: 30px;">
                   <i class="fa fa-check" aria-hidden="true"></i> Lampirkan gambar jika ada.
                 </p>
@@ -128,9 +128,34 @@
                   <i class="fa fa-check" aria-hidden="true"></i> Urgent / Penunjukan vendor langsung harus melampirkan form walver.
                 </p>
               </div>
+            <!-- </div> -->
+                <div class="col-md-6">
+                  <p class="lead">Documents:</p>
+                  <hr>
+                  <table class="table table-bordered" id="approval-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 10px">No</th>
+                        <th style="text-align: center;">File Name</th>
+                        <th style="width: 90px; text-align: center;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style="width: 1%">1.</td>
+                        <td style="width: 50%">
+                          <p>{{ data[0][25] }}</p>
+                        </td>
+                        <td style="text-align: center;">
+                          <link rel="image_src" href="image url" />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <hr>
               <!-- /.col -->
-            </div>
-            <hr>
 
             <!-- info row -->
             <div class="row invoice-info" style="padding-top: 10px;">
