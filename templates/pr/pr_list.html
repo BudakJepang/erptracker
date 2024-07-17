@@ -41,11 +41,14 @@
                   <table id="example1" class="table table-bordered table-striped">
                     <thead>
                     <tr style="text-align: center;">
-                        <th>No PR</th>
+                        <th style="width: 120px;">No PR</th>
                         <th>Requester</th>
                         <th>Project Name</th>
                         <th>Entity</th>
+                        <th>QTY</th>
                         <th>Total Budget</th>
+                        <th>Aproval_1 Name</th>
+                        <th>Approval_1 Status</th>
                         <th>Action</th>
                       </tr>
                       </thead>
@@ -53,12 +56,15 @@
                           {% for data in data %}
                           <tr>
                             <td>{{ data[0] }}</td>
-                            <td>{{ data[2] }}</td>
                             <td>{{ data[3] }}</td>
                             <td>{{ data[4] }}</td>
-                            <td style="text-align: right;">{{ "{:,.0f}".format(data[10]) }}</td>
-                            <td>
-                              <button type="button" class="btn bg-gradient-danger btn-sm"><i class="fa fa-file-pdf" title="PDF Preview"></i></button>
+                            <td>{{ data[6] }}</td>
+                            <td>{{ data[21] }}</td>
+                            <td style="text-align: right;">{{ "{:,.0f}".format(data[7]) }}</td>
+                            <td>{{ data[12] }}</td>
+                            <td>{{ data[9] }}</td>                            <td>
+                              <!-- <button type="button" class="btn bg-gradient-danger btn-sm"><i class="fa fa-file-pdf" title="PDF Preview"></i></button> -->
+                              <a href="{{ url_for('pr.pr_detail_page', no_pr=data[0]) }}"class="btn btn-default btn-sm" title="Detail"><i class="fa fa-info-circle" aria-hidden="true"></i></a>
                           </td>
                             <!-- PUT ACTION BUTTON HERE-->
                           </tr>

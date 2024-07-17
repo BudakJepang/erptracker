@@ -42,82 +42,68 @@ pr_blueprint = Blueprint('pr', __name__)
 @pr_blueprint.route('/pr_list')
 def pr_list():
     from app import mysql
-    cursor = mysql.connection.cursor()
-    cursor.execute(
-        '''
-        WITH pr_main AS (
-            SELECT 
+    import traceback
+    
+    user_id = session.get('id', 'system')
+    if user_id == 'system':
+        return redirect(url_for('login'))  # Redirect to login if session is not set
+
+    try:
+        cursor = mysql.connection.cursor()
+        query = '''
+        SELECT DISTINCT
             ph.no_pr,
             ph.tanggal_permintaan,
+            ph.requester_id,
             ph.requester_name,
             ph.nama_project,
-            ph.entity,
-            pd.item_no,
-            pd.nama_item,
-            pd.spesifikasi,
-            pd.qty,
-            pd.tanggal,
+            ph.entity_id,
+            e.entity_name,
             ph.total_budget_approved,
-            pdr.doc_name,
-            pdr.path,
-            ph.approval1_user_id,
+            ph.remarks,
             ph.approval1_status,
+            ph.approval1_user_id,
             ph.approval1_notes,
-            ph.approval2_user_id,
+            ua1.username AS approval1_username,
             ph.approval2_status,
+            ph.approval2_user_id,
             ph.approval2_notes,
+            ua2.username AS approval2_username,
+            ph.approval3_status,
             ph.approval3_user_id,
             ph.approval3_notes,
-            ph.approval3_status,
-            ph.created_at,
-            ph.updated_at 
-            FROM pr_header ph
-            LEFT JOIN pr_detail pd ON ph.no_pr = pd.no_pr 
-            LEFT JOIN pr_docs_reference pdr ON ph.no_pr = pdr.no_pr 
-        ),
-        account AS (
-            SELECT 
-            id,
-            username
-            FROM user_accounts
-        ),
-        main AS (
-        SELECT 
-            pr.no_pr,
-            pr.tanggal_permintaan,
-            pr.requester_name,
-            pr.nama_project,
-            pr.entity,
-            pr.item_no,
-            pr.nama_item,
-            pr.spesifikasi,
-            pr.qty,
-            pr.tanggal,
-            pr.total_budget_approved,
-            pr.doc_name,
-            pr.path,
-            acc1.username AS approval_1,
-            pr.approval1_status,
-            pr.approval1_notes,
-            acc2.username AS approval_2,
-            pr.approval2_status,
-            pr.approval2_notes,
-            acc3.username AS approval_3,
-            pr.approval3_notes,
-            pr.approval3_status,
-            pr.created_at,
-            pr.updated_at
-            FROM pr_main AS pr
-            LEFT JOIN account as acc1 ON pr.approval1_user_id = acc1.id 
-            LEFT JOIN account AS acc2 ON pr.approval2_user_id = acc2.id
-            LEFT JOIN account AS acc3 ON pr.approval3_user_id = acc3.id
+            ua3.username AS approval3_username,
+            SUM(pd.qty) AS total_qty
+        FROM pr_header ph
+        LEFT JOIN pr_detail pd ON ph.no_pr = pd.no_pr
+        LEFT JOIN user_accounts ua1 ON ph.approval1_user_id = ua1.id
+        LEFT JOIN user_accounts ua2 ON ph.approval2_user_id = ua2.id
+        LEFT JOIN user_accounts ua3 ON ph.approval3_user_id = ua3.id
+        LEFT JOIN entity e ON ph.entity_id = e.id
+        WHERE ph.entity_id IN (
+            SELECT DISTINCT entity_id 
+            FROM user_entity 
+            WHERE user_id = %s
         )
-        SELECT * FROM main
+        AND ph.requester_id = %s
+        GROUP BY ph.no_pr, ph.tanggal_permintaan, ph.requester_id, ph.requester_name, 
+                 ph.nama_project, ph.entity_id, e.entity_name, ph.total_budget_approved, 
+                 ph.remarks, ph.approval1_status, ph.approval1_user_id, ph.approval1_notes, 
+                 ua1.username, ph.approval2_status, ph.approval2_user_id, ph.approval2_notes, 
+                 ua2.username, ph.approval3_status, ph.approval3_user_id, ph.approval3_notes, 
+                 ua3.username
+        ORDER BY ph.tanggal_permintaan DESC, ph.no_pr DESC
         '''
-    )
-    data = cursor.fetchall()
-    cursor.close()
+        cursor.execute(query, (user_id, user_id))
+        data = cursor.fetchall()
+    except Exception as e:
+        traceback.print_exc()  # Print stack trace for debugging
+        return "An error occurred while fetching the PR list."
+    finally:
+        cursor.close()
+    
     return render_template('pr/pr_list.html', data=data)
+
 # ====================================================================================================================================
 
 
@@ -395,7 +381,7 @@ def pr_temp_submit():
 
         # INSERT TABLE FOR TABLE PR_HEADER
         insert_header_query = '''
-                INSERT INTO pr_header (no_pr ,tanggal_permintaan ,requester_id ,requester_name ,nama_project ,entity ,total_budget_approved ,remarks ,approval1_status ,
+                INSERT INTO pr_header (no_pr ,tanggal_permintaan ,requester_id ,requester_name ,nama_project ,entity_id,total_budget_approved ,remarks ,approval1_status ,
                 approval1_user_id ,approval1_notes ,approval2_status ,approval2_user_id ,approval2_notes ,approval3_status ,approval3_user_id ,approval3_notes ,created_at ,updated_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         '''
@@ -449,9 +435,80 @@ def pr_temp_submit():
             mysql.connection.commit()
         
         cursor.close()
-        pr_mail(no_pr, entity, department, nama_project, tanggal_permintaan, total_budget_approved, tanggal, approval2_user_id)
+        # pr_mail(no_pr, entity, department, nama_project, tanggal_permintaan, total_budget_approved, tanggal, approval2_user_id)
         flash('New PR has been added', 'success')
 
         return redirect(url_for('pr.pr_list'))
     return render_template('pr/pr_temp.html', pr_number=pr_number, entities=entities, departments=departments, approver=approver)
 # ==========================================================================================================================================
+
+
+# @pr_blueprint.route('/pr_detail_page', methods=['GET', 'POST'])
+# def pr_detail_page():
+#     return render_template('pr/pr_detail.html')
+
+import logging
+
+# Set up logging
+# logging.basicConfig(level=logging.DEBUG)
+
+@pr_blueprint.route('/pr_detail_page/<no_pr>', methods=['GET', 'POST'])
+def pr_detail_page(no_pr):
+    from app import mysql
+    cur = mysql.connection.cursor()
+    query = """
+    SELECT 
+    DISTINCT
+    ph.no_pr,
+    ph.tanggal_permintaan,
+    ph.requester_id,
+    ph.requester_name,
+    ph.nama_project,
+    ph.entity_id,
+    ph.total_budget_approved,
+    ph.remarks,
+    ph.approval1_status,
+    ph.approval1_user_id,
+    ph.approval1_notes,
+    ua1.username as approval1_username,
+    ph.approval2_status,
+    ph.approval2_user_id,
+    ph.approval2_notes,
+    ua2.username as approval2_username,
+    ph.approval3_status,
+    ph.approval3_user_id,
+    ph.approval3_notes,
+    ua3.username as approval3_username,
+    pd.item_no,
+    pd.nama_item,
+    pd.spesifikasi,
+    pd.qty,
+    pd.tanggal,
+    pdr.doc_name,
+    e.entity,
+    e.entity_name,
+    pdr.path
+    FROM pr_header ph
+    LEFT JOIN pr_detail pd 
+    ON ph.no_pr=pd.no_pr
+    LEFT JOIN pr_docs_reference pdr 
+    ON ph.no_pr =pdr.no_pr 
+    LEFT JOIN user_accounts ua1 
+    ON ph.approval1_user_id =ua1.id 
+    LEFT JOIN user_accounts ua2
+    ON ph.approval2_user_id =ua2.id 
+    LEFT JOIN user_accounts ua3
+    ON ph.approval3_user_id =ua3.id 
+    LEFT JOIN entity e 
+    ON ph.entity_id = e.id
+    WHERE ph.no_pr = %s
+    ORDER BY tanggal_permintaan, no_pr DESC
+    """
+    cur.execute(query, [no_pr])
+    data = cur.fetchall()
+    cur.close()
+    
+    # Log data for debugging
+    logging.debug(f"Data fetched for no_pr {no_pr}: {data}")
+    
+    return render_template('pr/pr_detail.html', data=data)

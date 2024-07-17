@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+
+<!-- INHERETENCE SIDEBAR -->
+
+<!--END INHERETENCE SIDEBAR -->
+
+<!-- INHERETENCE CONTENT -->
+{% block content %}
+
+<!-- MAIN CONTENT -->
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper">
+    <!-- Content Header (Page header) -->
+    <section class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1>PR DETAIL</h1>
+          </div>
+          <div class="col-sm-6">
+            <ol class="breadcrumb float-sm-right">
+              <li class="breadcrumb-item"><a href="#">Home</a></li>
+              <li class="breadcrumb-item active">Invoice</li>
+            </ol>
+          </div>
+        </div>
+      </div><!-- /.container-fluid -->
+    </section>
+
+<!-- Main FORM -->
+<section class="content">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-12">
+          <!-- Main content -->
+          <div class="invoice p-3 mb-3">
+            <!-- title row -->
+            <div class="row" style="padding-top: 30px;">
+              <div class="col-12">
+                <h4>
+                  <img src="{{ url_for('static', filename='entity_logo/v.png') }}" height="60" width="60"> Purchase Requisition, (PR).
+                  <small class="float-right">{{ data[0][27] }}</small>
+                </h4>
+              </div>
+              <!-- /.col -->
+            </div>
+            <!-- info row -->
+            <div class="row invoice-info" style="padding-top: 10px;">
+              <div class="col-sm-12 invoice-col">
+                <address>
+                  <strong style="font-size: 18px;">PR Number : {{ data[0][0]}}</strong><br>
+                  <hr>
+                  <table class="" style="width:100%; border-spacing: 0;">
+                    <tr>
+                      <td style="text-align: left; width: 15%; padding-top: 10px;">Request Date</td>
+                      <td style="text-align: left; width: 1%;">:</td>
+                      <td style="text-align: left; width: 65%;">{{ data[0][1] }}</td>  
+                    </tr>
+                    <tr>
+                      <td style="text-align: left; width: 15%;">User / Requester</td>
+                      <td style="text-align: left; width: 1%;">:</td>
+                      <td style="text-align: left; width: 65%;">{{ data[0][3] }}</td>  
+                    </tr>
+                    <tr>
+                      <td style="text-align: left; width: 15%;">Project Name</td>
+                      <td style="text-align: left; width: 1%;">:</td>
+                      <td style="text-align: left; width: 65%;">{{ data[0][4] }}</td>  
+                    </tr>
+                    <tr>
+                      <td style="text-align: left; width: 15%;">Budget Source / Entity</td>
+                      <td style="text-align: left; width: 1%;">:</td>
+                      <td style="text-align: left; width: 65%;">{{ data[0][26] }}</td>  
+                    </tr>
+                    <tr>
+                      <td style="text-align: left; padding-top: 20px; width: 15%;"><strong style="font-size: 18px;">Total Budget Approved</strong></td>
+                      <td style="text-align: left; padding-top: 20px; width: 1%;">:</td>
+                      <td style="text-align: left; padding-top: 20px; width: 65%;"><strong style="font-size: 18px;">Rp. {{ "{:,.0f}".format(data[0][6]) }}</strong></td>  
+                    </tr>
+                  </table>
+                  
+                </address>
+              </div>
+            </div>
+            <!-- /.row -->
+            <hr style="padding-top: 10px;">
+            <p style="text-align: center; font-size: 20px; font-weight: bold;">Item / Service Invoice</p>
+            <!-- Table row -->
+            <div class="row">
+              <div class="col-12 table-responsive">
+                <table class="table table-striped">
+                  <thead>
+                    <tr style="text-align: center;">
+                      <th>No</th>
+                      <th>Nama Barang / Jasa</th>
+                      <th>Spesifikasi Barang/Jasa</th>
+                      <th>QTY</th>
+                      <th>Tanggal Dibutuhkan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for data in data %}
+                    <tr>
+                      <td style="text-align: center;">{{ data[20]}}</td>
+                      <td>{{ data[21] }}</td>  
+                      <td>{{ data[22] }}</td>  
+                      <td>{{ data[23] }}</td>  
+                      <td>{{ data[24] }}</td>  
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+                <hr>
+              </div>
+              <!-- /.col -->
+            </div>
+            <!-- /.row -->
+  
+            <div class="row">
+              <!-- accepted payments column -->
+              <div class="col-6">
+                <p class="lead">Remarks:</p>
+                <p class="text-muted well well-sm shadow-none" style="margin-top: 10px; padding-left: 30px;">
+                  <i class="fa fa-check" aria-hidden="true"></i> Lampirkan gambar jika ada.
+                </p>
+                <p class="text-muted well well-sm shadow-none" style="margin-top: 10px; padding-left: 30px;">
+                  <i class="fa fa-check" aria-hidden="true"></i> Urgent / Penunjukan vendor langsung harus melampirkan form walver.
+                </p>
+              </div>
+              <!-- /.col -->
+            </div>
+            <div class="row" style="padding-top: 20px;">
+              <div class="col-12">
+                <table class="" style="width:100%;">
+                  <thead>
+                    <tr>
+                      <th style="text-align: center; width:20%">Dibuat Oleh</th>
+                      <th style="text-align: center; width:20%"></th>
+                      <th style="text-align: left; width:20%">Disetujui Oleh</th>
+                      <th style="text-align: center; width:20%"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style="height: 100px;">
+                      <td></td>  
+                      <td></td>
+                      <td></td>  
+                      <td></td>
+                    </tr>
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td style="text-align: center; font-weight: bold;">({{ data[0][3] }})</td>
+                      <td style="text-align: center; font-weight: bold;">({{ data[0][11] }})</td>
+                      <td style="text-align: center; font-weight: bold;">({{ data[0][15] }})</td>
+                      <td style="text-align: center; font-weight: bold;">({{ data[0][19] }})</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+            <!-- /.col -->
+            <!-- this row will not appear when printing -->
+            <div class="row no-print" style="padding-top: 50px; padding-bottom: 50px">
+              <div class="col-12">
+                <!-- <a href="invoice-print.html" rel="noopener" target="_blank" class="btn btn-default"><i class="fas fa-print"></i> Print</a> -->
+                <a href="{{ url_for('pr.pr_list') }}" class="btn btn-dark float-right" title="Detail">Back to list</a>
+                <button type="button" class="btn btn-danger float-right" style="margin-right: 5px;">
+                    <i class="fa fa-file-pdf" aria-hidden="true"></i> Generate PDF
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- /.invoice -->
+        </div><!-- /.col -->
+      </div><!-- /.row -->
+    </div><!-- /.container-fluid -->
+  </section>
+  <!-- /.content -->
+  
+  
+
+<!--END MAIN CONTENT -->
+
+{% endblock %}
+<!-- END INHERETENCE CONTENT -->
