@@ -1,0 +1,3 @@
+no;customer_name;order_number;merchant_order_number;settlement_code;partner_reference_number;subprice;delivery_fee;packing_fee;grand_total;bri_fee;algo_fee;settlement_amount;transaction_datetime;delivery_date;store_code;status_payment;status_order
+1;ROBA'AH RATNA WULAN;1808381632626802688;17199867536866;20240703-SZwB7;240703130600;26600.00;5000.00;1500.00;33100.00;212.80;266.00;32887.20;2024-07-03 13:06:00;2024-07-03 21:36:00;KD09;PAID;CANCELLED
+2;MUHAMMAD RIZQI ABYAN;1808396537626882048;17199903070857;20240703-ah0aM;240703140512;11600.00;5000.00;1500.00;18100.00;92.80;116.00;18007.20;2024-07-03 14:05:13;2024-07-05 00:15:00;KD09;PAID;CANCELLED

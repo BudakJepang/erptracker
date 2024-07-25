@@ -69,7 +69,7 @@
                     <select class="form-control select2bs4" name="entity" id="entity" style="width: 100%;" required>
                       <option value="">Select Entity ...</option>
                       {% for entity in entities %}
-                      <option value="{{ entity[0] }}">{{ entity[2] }}</option>
+                      <option value="{{ entity[1] }}">{{ entity[2] }}</option>
                       {% endfor %}
                     </select>
                   </div>
@@ -300,49 +300,65 @@
       updateRowNumbers("#pr-detail-table");
     });
 
+    // Menambahkan baris baru
     $("#add-approval").click(function() {
-      const rowNumber = $("#approval-table tbody tr").length + 1;
-      const newRow = `
-      <tr>
-        <td>${rowNumber}.</td>
-        <td style="width: 80%">
-          <select class="form-control select2bs4" name="approval${rowNumber}_user_id" id="approval${rowNumber}_user_id" style="width: 100%;" required>
-            <option value="">Select Approval ...</option>
-            {% for approver in approver %}
-            <option value="{{ approver[0] }}" data-entity-id="{{ approver[1] }}">{{ approver[1] }}</option>
-            {% endfor %}
-          </select>
-        </td>
-        <td style="text-align: center;">
-          <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Approval">
-            <i class="fa fa-trash"></i>
-          </button>
-        </td>
-      </tr>`;
-      $("#approval-table tbody").append(newRow);
-      updateRowNumbers("#approval-table");
+        const rowNumber = $("#approval-table tbody tr").length + 1;
+        const newRow = `
+        <tr>
+            <td>${rowNumber}.</td>
+            <td style="width: 80%">
+                <select class="form-control select2bs4" name="approval_user_id${rowNumber}" id="approval_user_id${rowNumber}" style="width: 100%;" required>
+                    <option value="">Select Approval ...</option>
+                    {% for approver in approver %}
+                    <option value="{{ approver[0] }}" data-entity-id="{{ approver[1] }}">{{ approver[1] }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td style="text-align: center;">
+                <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Approval">
+                    <i class="fa fa-trash"></i>
+                </button>
+            </td>
+        </tr>`;
+        $("#approval-table tbody").append(newRow);
+        updateRowNumbers("#approval-table");
     });
 
-    $("#add-upload").click(function() {
-      const rowNumber = $("#upload-table tbody tr").length + 1;
-      const newRow = `
-      <tr>
-        <td>${rowNumber}.</td>
-        <td style="width: 80%">
-          <input type="file" name="files[]" multiple onchange="previewFiles(this)">
-        </td>
-        <td>
-          <div class="preview" style="width: 150px; text-align: center;"></div>
-        </td>
-        <td style="text-align: center;">
-          <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Upload">
-            <i class="fa fa-trash"></i>
-          </button>
-        </td>
-      </tr>`;
-      $("#upload-table tbody").append(newRow);
-      updateRowNumbers("#upload-table");
+    // Mengupdate nomor baris setelah penghapusan
+    function updateRowNumbers(tableId) {
+        $(`${tableId} tbody tr`).each(function(index) {
+            $(this).find('td:first').text((index + 1) + '.');
+            $(this).find('select').attr('name', 'approval_user_id' + (index + 1));
+            $(this).find('select').attr('id', 'approval_user_id' + (index + 1));
+        });
+    }
+
+    // Menghapus baris dan memperbarui nomor baris
+    $(document).on('click', '.delete-row', function() {
+        $(this).closest('tr').remove();
+        updateRowNumbers("#approval-table");
     });
+
+      $("#add-upload").click(function() {
+        const rowNumber = $("#upload-table tbody tr").length + 1;
+        const newRow = `
+        <tr>
+          <td>${rowNumber}.</td>
+          <td style="width: 80%">
+            <input type="file" name="files[]" multiple onchange="previewFiles(this)">
+          </td>
+          <td>
+            <div class="preview" style="width: 150px; text-align: center;"></div>
+          </td>
+          <td style="text-align: center;">
+            <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Upload">
+              <i class="fa fa-trash"></i>
+            </button>
+          </td>
+        </tr>`;
+        $("#upload-table tbody").append(newRow);
+        updateRowNumbers("#upload-table");
+      });
 
     // Preview upload documents
     // $(document).on('change', 'input[type="file"]', function() {

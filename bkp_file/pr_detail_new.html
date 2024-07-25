@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<style>
+    .status-pending {
+        color: orange;
+        font-weight: bold;
+    }
+    .status-approved {
+        color: green;
+    }
+    .status-rejected {
+        color: red;
+    }
+</style>
+
+<div class="content-wrapper">
+    <section class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1>PR DETAIL</h1>
+          </div>
+          <div class="col-sm-6">
+            <ol class="breadcrumb float-sm-right">
+              <li class="breadcrumb-item"><a href="#">Home</a></li>
+              <li class="breadcrumb-item active">Invoice</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+<section class="content">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-md-12">
+          <div class="invoice p-3 mb-3">
+            <div class="row" style="padding-top: 30px;">
+              <div class="col-12">
+                <h4>
+                  <img src="{{ url_for('static', filename='entity_logo/unnamed.png') }}" height="60" width="60"> Purchase Requisition, (PR).
+                  <small class="float-right">{{ pr_header[0][9] }}</small>
+                </h4>
+              </div>
+            </div>
+            <div class="row invoice-info" style="padding-top: 10px;">
+              <div class="col-sm-12 invoice-col">
+                <address>
+                  <strong style="font-size: 18px;">PR Number : {{ pr_header[0][0]}}</strong><br>
+                  <hr>
+                  <table class="" style="width:100%; border-spacing: 0;">
+                    <tr>
+                      <td style="text-align: left; width: 15%; padding-top: 10px;">Request Date</td>
+                      <td style="text-align: left; width: 1%;">:</td>
+                      <td style="text-align: left; width: 65%;">{{ pr_header[0][1] }}</td>  
+                    </tr>
+                    <tr>
+                      <td style="text-align: left; width: 15%;">User / Requester</td>
+                      <td style="text-align: left; width: 1%;">:</td>
+                      <td style="text-align: left; width: 65%;">{{ pr_header[0][3] }}</td>  
+                    </tr>
+                    <tr>
+                      <td style="text-align: left; width: 15%;">Project Name</td>
+                      <td style="text-align: left; width: 1%;">:</td>
+                      <td style="text-align: left; width: 65%;">{{ pr_header[0][5] }}</td>  
+                    </tr>
+                    <tr>
+                      <td style="text-align: left; width: 15%;">Budget Source / Entity</td>
+                      <td style="text-align: left; width: 1%;">:</td>
+                      <td style="text-align: left; width: 65%;">{{ pr_header[0][8] }}</td>  
+                    </tr>
+                    <tr>
+                      <td style="text-align: left; padding-top: 20px; width: 15%;"><strong style="font-size: 18px;">Total Budget Approved</strong></td>
+                      <td style="text-align: left; padding-top: 20px; width: 1%;">:</td>
+                      <td style="text-align: left; padding-top: 20px; width: 65%;"><strong style="font-size: 18px;">Rp. {{ "{:,.0f}".format(pr_header[0][6]) }}</strong></td>  
+                    </tr>
+                  </table>
+                </address>
+              </div>
+            </div>
+            <hr>
+            <div class="row">
+              <div class="col-md-12">
+                <table class="table table-bordered">
+                  <thead>
+                    <tr style="text-align: center;">
+                      <th>No</th>
+                      <th>Nama Barang / Jasa</th>
+                      <th>Spesifikasi Barang/Jasa</th>
+                      <th>QTY</th>
+                      <th>Tanggal Dibutuhkan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for row in pr_detail %}
+                    <tr>
+                      <td style="text-align: center;">{{ row[1]}}</td>
+                      <td>{{ row[2] }}</td>  
+                      <td>{{ row[3] }}</td>  
+                      <td>{{ row[4] }}</td>  
+                      <td>{{ row[5] }}</td>  
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+                <hr>
+              </div>
+            </div>
+  
+            <div class="row">
+              <div class="col-md-6">
+                <p class="lead">Remarks:</p>
+                <hr>
+                <p class="text-muted well well-sm shadow-none" style="margin-top: 10px; padding-left: 30px;">
+                  <i class="fa fa-check" aria-hidden="true"></i> Lampirkan gambar jika ada.
+                </p>
+                <p class="text-muted well well-sm shadow-none" style="margin-top: 10px; padding-left: 30px;">
+                  <i class="fa fa-check" aria-hidden="true"></i> Urgent / Penunjukan vendor langsung harus melampirkan form walver.
+                </p>
+              </div>
+              <div class="col-md-6">
+                <p class="lead">Documents:</p>
+                <hr>
+                <table class="table table-bordered" id="approval-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 10px">No</th>
+                      <th style="text-align: center;">File Name</th>
+                      <th style="width: 90px; text-align: center;">Preview</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style="width: 1%">1.</td>
+                      <td style="width: 50%">
+                        <p>{{ pr_header[0][25] }}</p>
+                      </td>
+                      <td style="text-align: center;">
+                        <img src="{{ url_for('static', filename='uploads/luffy.jpeg') }}" height="60" width="120">
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <hr>
+  
+            <div class="row invoice-info" style="padding-top: 10px;">
+              <div class="col-sm-6 invoice-col">
+                  <address>
+                      <table style="width:100%; border-spacing: 0;">
+                          <tr>
+                              <td style="text-align: left; width: 15%; padding-top: 10px; padding-bottom: 10px">Dibuat Oleh</td>
+                              <td style="text-align: left; width: 1%; padding-top: 10px; padding-bottom: 10px">:</td>
+                              <td style="text-align: left; width: 65%; font-weight: bold; padding-top: 10px; padding-bottom: 10px">{{ pr_header[0][3] }}</td>
+                          </tr>
+                          {% if current_user_id == pr_header[0][1] %}
+                          {% for approval in pr_approval %}
+                          {% if current_user_id == approval[1] and (loop.index0 == 0 or pr_approval[loop.index0 - 1][3] == 'APPROVED') %}
+                          <tr>
+                              <td style="text-align: left; width: 15%; padding-top: 10px;">Disetujui Oleh</td>
+                              <td style="text-align: left; width: 1%; padding-top: 10px;">:</td>
+                              <td style="text-align: left; width: 65%; font-weight: bold; padding-top: 10px;">{{ approval[2] }}</td>
+                          </tr>
+                          <tr>
+                              <td style="text-align: left; width: 15%; padding-top: 10px;">Status Persetujuan</td>
+                              <td style="text-align: left; width: 1%; padding-top: 10px;">:</td>
+                              <td style="text-align: left; width: 65%; font-weight: bold; padding-top: 10px;">{{ approval[3] }}</td>
+                          </tr>
+                          {% endif %}
+                          {% endfor %}
+                          {% endif %}
+                      </table>
+                  </address>
+              </div>
+              <div class="col-sm-6 invoice-col">
+                  {% for approval in pr_approval %}
+                  <p class="lead">Approval {{ loop.index }}:</p>
+                  <table style="width: 100%; border-spacing: 0;">
+                      <tr>
+                          <td style="text-align: left; width: 25%; padding-top: 10px;">Approval User</td>
+                          <td style="text-align: left; width: 5%; padding-top: 10px;">:</td>
+                          <td style="text-align: left; width: 70%; padding-top: 10px; font-weight: bold;">{{ approval[2] }}</td>
+                      </tr>
+                      <tr>
+                          <td style="text-align: left; width: 25%; padding-top: 10px;">Status</td>
+                          <td style="text-align: left; width: 5%; padding-top: 10px;">:</td>
+                          <td style="text-align: left; width: 70%; padding-top: 10px;">
+                              {% if approval[3] == 'PENDING' %}
+                                  <span class="status-pending">PENDING</span>
+                              {% elif approval[3] == 'APPROVED' %}
+                                  <span class="status-approved">APPROVED</span>
+                              {% elif approval[3] == 'REJECTED' %}
+                                  <span class="status-rejected">REJECTED</span>
+                              {% endif %}
+                          </td>
+                      </tr>
+                      <tr>
+                          <td style="text-align: left; width: 25%; padding-top: 10px;">Comments</td>
+                          <td style="text-align: left; width: 5%; padding-top: 10px;">:</td>
+                          <td style="text-align: left; width: 70%; padding-top: 10px;">{{ approval[4] }}</td>
+                      </tr>
+                      {% if current_user_id == approval[1] and approval[3] == 'PENDING' %}
+                      <tr>
+                          <td colspan="3" style="text-align: right; padding-top: 10px;">
+                              <form method="POST" action="{{ url_for('execute_approval', approval_id=approval[0]) }}">
+                                  <button type="submit" name="approval_status" value="APPROVED" class="btn btn-success">Approve</button>
+                                  <button type="submit" name="approval_status" value="REJECTED" class="btn btn-danger">Reject</button>
+                              </form>
+                          </td>
+                      </tr>
+                      {% endif %}
+                  </table>
+                  <hr>
+                  {% endfor %}
+              </div>
+            </div>
+
+            {% if current_user_id == pr_header[0][10] %}
+            <div class="row">
+              <div class="col-12">
+                <a href="#" class="btn btn-primary float-right"><i class="far fa-envelope"></i> Kirim Email</a>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+</section>
+</div>
+
+{% endblock %}

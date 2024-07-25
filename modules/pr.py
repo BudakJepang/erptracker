@@ -15,7 +15,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
 from datetime import datetime
 from flask_mysqldb import MySQL, MySQLdb
 from werkzeug.utils import secure_filename
-from modules.mail import pr_mail
+from modules.mail import pr_mail, approval_notification_mail
 
 
 
@@ -51,7 +51,7 @@ def pr_list():
     try:
         cursor = mysql.connection.cursor()
         query = '''
-        SELECT DISTINCT
+        SELECT DISTINCT 
             ph.no_pr,
             ph.tanggal_permintaan,
             ph.requester_id,
@@ -61,40 +61,21 @@ def pr_list():
             e.entity_name,
             ph.total_budget_approved,
             ph.remarks,
-            ph.approval1_status,
-            ph.approval1_user_id,
-            ph.approval1_notes,
-            ua1.username AS approval1_username,
-            ph.approval2_status,
-            ph.approval2_user_id,
-            ph.approval2_notes,
-            ua2.username AS approval2_username,
-            ph.approval3_status,
-            ph.approval3_user_id,
-            ph.approval3_notes,
-            ua3.username AS approval3_username,
-            SUM(pd.qty) AS total_qty
-        FROM pr_header ph
-        LEFT JOIN pr_detail pd ON ph.no_pr = pd.no_pr
-        LEFT JOIN user_accounts ua1 ON ph.approval1_user_id = ua1.id
-        LEFT JOIN user_accounts ua2 ON ph.approval2_user_id = ua2.id
-        LEFT JOIN user_accounts ua3 ON ph.approval3_user_id = ua3.id
+            ph.created_at,
+            pa.created_at AS approval_date
+        FROM pr_header ph 
+        LEFT JOIN pr_detail pd ON ph.no_pr = pd.no_pr 
+        LEFT JOIN pr_approval pa ON ph.no_pr = pa.no_pr 
         LEFT JOIN entity e ON ph.entity_id = e.id
         WHERE ph.entity_id IN (
-            SELECT DISTINCT entity_id 
-            FROM user_entity 
-            WHERE user_id = %s
+        SELECT DISTINCT entity_id
+        FROM user_entity WHERE user_id = %s
         )
-        AND ph.requester_id = %s
-        GROUP BY ph.no_pr, ph.tanggal_permintaan, ph.requester_id, ph.requester_name, 
-                 ph.nama_project, ph.entity_id, e.entity_name, ph.total_budget_approved, 
-                 ph.remarks, ph.approval1_status, ph.approval1_user_id, ph.approval1_notes, 
-                 ua1.username, ph.approval2_status, ph.approval2_user_id, ph.approval2_notes, 
-                 ua2.username, ph.approval3_status, ph.approval3_user_id, ph.approval3_notes, 
-                 ua3.username
-        ORDER BY ph.tanggal_permintaan DESC, ph.no_pr DESC
+        AND (ph.requester_id = %s OR pa.approval_user_id = %s)
+        GROUP BY 1,2,3,4,5,6,7,8,9,10
+        ORDER BY 2 DESC, 1 DESC
         '''
-        cursor.execute(query, (user_id, user_id))
+        cursor.execute(query, (user_id, user_id, user_id))
         data = cursor.fetchall()
     except Exception as e:
         traceback.print_exc()  # Print stack trace for debugging
@@ -346,22 +327,6 @@ def pr_temp_submit():
         nama_project = request.form['nama_project']
         remarks = None
 
-        # get approval value from form PR_HEADER
-        approval1_user_id = request.form.get('approval1_user_id', None)
-        approval2_user_id = request.form.get('approval2_user_id', None)
-        approval3_user_id = request.form.get('approval3_user_id', None)
-
-        # approval condition jika datanya isi atau null
-        approval1_user_id = approval1_user_id if approval1_user_id else None
-        approval2_user_id = approval2_user_id if approval2_user_id else None
-        approval3_user_id = approval3_user_id if approval3_user_id else None
-        approval1_status = None
-        approval1_notes = None
-        approval2_status = None
-        approval2_notes = None
-        approval3_status = None
-        approval3_notes = None
-
         # VARIABLE FOR AUTO_NUM TABLE
         current_date = datetime.now()
         year_month = current_date.strftime('%y%m')
@@ -379,21 +344,63 @@ def pr_temp_submit():
                             (entity, department, current_date.month, current_date.year, pr_number))
                 mysql.connection.commit()
 
-        # INSERT TABLE FOR TABLE PR_HEADER
+        # ADD CONDITION FOR INSERT TO DB BY entity_id
+        if entity == 'CNI':
+            entity = 1
+        elif entity == 'OID':
+            entity = 2
+        elif entity == 'RKI':
+            entity = 3
+        elif entity == 'DMI':
+            entity = 4
+        elif entity == 'AGI':
+            entity = 5
+        elif entity == 'OPN':
+            entity = 6
+        elif entity == 'ATI':
+            entity = 7
+        elif entity == 'AMP':
+            entity = 8
+        elif entity == 'TKM':
+            entity = 9
+        else:
+            entity = None
+
+        # INSERT INTO TABLE FOR TABLE PR_HEADER
         insert_header_query = '''
-                INSERT INTO pr_header (no_pr ,tanggal_permintaan ,requester_id ,requester_name ,nama_project ,entity_id,total_budget_approved ,remarks ,approval1_status ,
-                approval1_user_id ,approval1_notes ,approval2_status ,approval2_user_id ,approval2_notes ,approval3_status ,approval3_user_id ,approval3_notes ,created_at ,updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO pr_header 
+                (no_pr, tanggal_permintaan, requester_id, requester_name, nama_project, entity_id, total_budget_approved, remarks, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         '''
 
         # EXECUTION QUERY FOR TABLE PR_HEADER
         today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        cursor.execute(insert_header_query, (no_pr, tanggal_permintaan, requester_id, requester_name, nama_project, entity, total_budget_approved, remarks, approval1_status,
-                                             approval1_user_id, approval1_notes, approval2_status, approval2_user_id, approval2_notes, approval3_status, approval3_user_id, approval3_notes, today, today))
+        cursor.execute(insert_header_query, (no_pr, tanggal_permintaan, requester_id, requester_name, nama_project, entity, total_budget_approved, remarks, today, today))
         mysql.connection.commit()
 
+        # INSERT INTO TABLE PR_APPROVAL
+        approval_list = []
+        idx = 1
+        today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        while True:
+            try:
+                approval_user_id = request.form[f'approval_user_id{idx}']
+                approval_list.append((no_pr, approval_user_id, None, None, today))
+                idx += 1
+            except KeyError:
+                break
+
+        if approval_list:
+            insert_approval_query = '''
+                INSERT INTO pr_approval (no_pr, approval_user_id, status, notes, created_at)
+                VALUES (%s, %s, %s, %s, %s)
+            '''
+            cursor.executemany(insert_approval_query, approval_list)
+            mysql.connection.commit()
+
         
-        # PROVISIONING INSERT TO TABLE PR_DETAIL
+        # PROVISIONING INSERT INTO TABLE PR_DETAIL
         items = []
         index = 1
         while True:
@@ -452,63 +459,126 @@ import logging
 # Set up logging
 # logging.basicConfig(level=logging.DEBUG)
 
+# PT DETAIL
 @pr_blueprint.route('/pr_detail_page/<no_pr>', methods=['GET', 'POST'])
 def pr_detail_page(no_pr):
     from app import mysql
     cur = mysql.connection.cursor()
+
+    # GET USER_ID FROM LOGIN SESSION
+    current_user_id = session.get('id', 'system')
+
+    # QUERY LIST FOR PR_HEADER DATA
     query = """
-    SELECT 
-    DISTINCT
-    ph.no_pr,
-    ph.tanggal_permintaan,
-    ph.requester_id,
-    ph.requester_name,
-    ph.nama_project,
-    ph.entity_id,
-    ph.total_budget_approved,
-    ph.remarks,
-    ph.approval1_status,
-    ph.approval1_user_id,
-    ph.approval1_notes,
-    ua1.username as approval1_username,
-    ph.approval2_status,
-    ph.approval2_user_id,
-    ph.approval2_notes,
-    ua2.username as approval2_username,
-    ph.approval3_status,
-    ph.approval3_user_id,
-    ph.approval3_notes,
-    ua3.username as approval3_username,
-    pd.item_no,
-    pd.nama_item,
-    pd.spesifikasi,
-    pd.qty,
-    pd.tanggal,
-    pdr.doc_name,
-    e.entity,
-    e.entity_name,
-    pdr.path
-    FROM pr_header ph
-    LEFT JOIN pr_detail pd 
-    ON ph.no_pr=pd.no_pr
-    LEFT JOIN pr_docs_reference pdr 
-    ON ph.no_pr =pdr.no_pr 
-    LEFT JOIN user_accounts ua1 
-    ON ph.approval1_user_id =ua1.id 
-    LEFT JOIN user_accounts ua2
-    ON ph.approval2_user_id =ua2.id 
-    LEFT JOIN user_accounts ua3
-    ON ph.approval3_user_id =ua3.id 
-    LEFT JOIN entity e 
-    ON ph.entity_id = e.id
-    WHERE ph.no_pr = %s
-    ORDER BY tanggal_permintaan, no_pr DESC
+            SELECT DISTINCT 
+                ph.no_pr,
+                ph.tanggal_permintaan,
+                ph.requester_id,
+                ph.requester_name,
+                ph.entity_id,
+                ph.nama_project,
+                ph.total_budget_approved,
+                ph.remarks,
+                e.entity,
+                e.entity_name
+            FROM pr_header ph 
+            LEFT JOIN entity e ON ph.entity_id = e.id
+            WHERE ph.no_pr = %s
+            ORDER BY 2 DESC
     """
     cur.execute(query, [no_pr])
-    data = cur.fetchall()
-    cur.close()
+    pr_header = cur.fetchall()
     
     # Log data for debugging
-    logging.debug(f"Data fetched for no_pr {no_pr}: {data}")
+    logging.debug(f"Data fetched for no_pr {no_pr}: {pr_header}")
+
+    # QUERY LIST FOR PR_DETAIL
+    cur.execute("SELECT no_pr, item_no, nama_item, spesifikasi, qty, tanggal FROM pr_detail WHERE no_pr = %s", (no_pr,))
+    pr_detail = cur.fetchall()
+
+    # QUERY LIST FOR APPROVAL
+    query_approval = """
+            SELECT 
+                pa.no_pr,
+                pa.approval_user_id,
+                ua.username,
+                pa.status,
+                pa.notes,
+                pa.created_at
+            FROM pr_approval pa
+            LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id
+            WHERE no_pr = %s
+    """
+    cur.execute(query_approval, [no_pr])
+    pr_approval = cur.fetchall()
+
+    cur.close()
+
+    return render_template('pr/pr_detail.html', pr_header=pr_header, pr_detail=pr_detail, pr_approval=pr_approval, current_user_id=current_user_id)
+
+
+# PR APPROVED
+def send_sequence_mail_pr(no_pr):
+    from app import mysql
+    cur = mysql.connection.cursor()
+
+    query = '''
+        SELECT DISTINCT
+            ph.no_pr,
+            pa.approval_user_id,
+            ua.email,
+            pa.status 
+        FROM pr_header ph 
+        LEFT JOIN pr_approval pa ON ph.no_pr = pa.no_pr
+        LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
+        WHERE pa.status is null
+        AND ph.no_pr = %s
+        LIMIT 1
+    '''
+    cur.execute(query, [no_pr])
+    data = cur.fetchone()
+    cur.close()
+    email = data['email']
+    print(f'=============================== INI TUH PRINT EMAIL {email}')
+    return email
+
+@pr_blueprint.route('/pr_approved/<no_pr>', methods=['GET', 'POST'])
+def pr_approved(no_pr):
+    from app import mysql
+    cur = mysql.connection.cursor()
+    current_user_id = session.get('id', 'system')
+
+
+    if request.method == 'POST':
+        approval_notes = request.form.get('notes')
+        approval_user_id = current_user_id
+
+        # Update query
+        update_query = f"""
+            UPDATE pr_approval
+            SET status = 'APPROVED', notes = %s, created_at = NOW()
+            WHERE no_pr = %s AND approval_user_id = %s
+        """
+
+        print(approval_user_id)
+
+        try:
+            cur.execute(update_query, (approval_notes, no_pr, approval_user_id))
+            mysql.connection.commit()
+            email = 'rohmankpai@gmail.com'
+            requestName = 'Mohammad Nurohman'
+            approvalName = 'David Irwan'
+            entityName = 'PT. ORANGE INOVASI DIGITAL'
+            budget = "2000000"
+            dueDate = '2024-08-01'
+            print(f'INI PRINT EMAILL CUUYYYY -=========================== {email}')
+            pr_mail(no_pr, email, requestName, approvalName, budget, dueDate, entityName)
+            flash('PR has been approved successfully!', 'success')
+
+        except Exception as e:
+            mysql.connection.rollback()
+            flash(f'Error: {str(e)}', 'danger')
+        finally:
+            cur.close()
     
-    return render_template('pr/pr_detail.html', data=data)
+    return redirect(url_for('pr.pr_list')) 

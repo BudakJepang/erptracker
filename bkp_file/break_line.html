@@ -1,0 +1,64 @@
+-- Create a table for storing texts
+CREATE TABLE texts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    content TEXT NOT NULL
+);
+
+
+from flask import Flask, render_template
+import sqlite3
+import re
+
+app = Flask(__name__)
+
+@app.template_filter('nl2br')
+def nl2br_filter(s):
+    return re.sub(r'\n', '<br>\n', s)
+
+def get_text_from_db():
+    conn = sqlite3.connect('texts.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT content FROM texts WHERE id=1')  # Mengambil teks pertama sebagai contoh
+    text = cursor.fetchone()[0]
+    conn.close()
+    return text
+
+@app.route('/')
+def index():
+    text = get_text_from_db()
+    return render_template('index.html', text=text)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formatted Text in Table</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <table>
+        <tr>
+            <td class="formatted-text">
+                {{ text | safe | nl2br }}
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+td {
+    padding: 10px;
+    border: 1px solid #ccc;
+}
+.formatted-text {
+    white-space: pre-wrap; /* Preserve whitespace and line breaks */
+    word-wrap: break-word; /* Ensure long words break correctly */
+}

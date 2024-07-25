@@ -1,0 +1,404 @@
+{% extends 'base.html' %}
+
+<!-- INHERETENCE SIDEBAR -->
+
+<!--END INHERETENCE SIDEBAR -->
+
+<!-- INHERETENCE CONTENT -->
+{% block content %}
+
+<style>
+    .status-pending {
+        color: orange;
+        font-weight: bold;
+    }
+    .status-approved {
+        color: green;
+    }
+    .status-rejected {
+        color: red;
+    }
+</style>
+<!-- MAIN CONTENT -->
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper">
+    <!-- Content Header (Page header) -->
+    <section class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1>PR DETAIL</h1>
+          </div>
+          <div class="col-sm-6">
+            <ol class="breadcrumb float-sm-right">
+              <li class="breadcrumb-item"><a href="#">Home</a></li>
+              <li class="breadcrumb-item active">Invoice</li>
+            </ol>
+          </div>
+        </div>
+      </div><!-- /.container-fluid -->
+    </section>
+
+<!-- Main FORM -->
+<section class="content">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-md-12">
+          <!-- Main content -->
+          <div class="invoice p-3 mb-3">
+            <!-- title row -->
+            <div class="row" style="padding-top: 30px;">
+              <div class="col-12">
+                <h4>
+                  <img src="{{ url_for('static', filename='entity_logo/unnamed.png') }}" height="60" width="60"> Purchase Requisition, (PR).
+                  <small class="float-right">{{ data[0][27] }}</small>
+                </h4>
+              </div>
+            </div>
+            <!-- info row -->
+            <div class="row invoice-info" style="padding-top: 10px;">
+              <div class="col-sm-12 invoice-col">
+                <address>
+                  <strong style="font-size: 18px;">PR Number : {{ data[0][0]}}</strong><br>
+                  <hr>
+                  <table class="" style="width:100%; border-spacing: 0;">
+                    <tr>
+                      <td style="text-align: left; width: 15%; padding-top: 10px;">Request Date</td>
+                      <td style="text-align: left; width: 1%;">:</td>
+                      <td style="text-align: left; width: 65%;">{{ data[0][1] }}</td>  
+                    </tr>
+                    <tr>
+                      <td style="text-align: left; width: 15%;">User / Requester</td>
+                      <td style="text-align: left; width: 1%;">:</td>
+                      <td style="text-align: left; width: 65%;">{{ data[0][3] }}</td>  
+                    </tr>
+                    <tr>
+                      <td style="text-align: left; width: 15%;">Project Name</td>
+                      <td style="text-align: left; width: 1%;">:</td>
+                      <td style="text-align: left; width: 65%;">{{ data[0][4] }}</td>  
+                    </tr>
+                    <tr>
+                      <td style="text-align: left; width: 15%;">Budget Source / Entity</td>
+                      <td style="text-align: left; width: 1%;">:</td>
+                      <td style="text-align: left; width: 65%;">{{ data[0][26] }}</td>  
+                    </tr>
+                    <tr>
+                      <td style="text-align: left; padding-top: 20px; width: 15%;"><strong style="font-size: 18px;">Total Budget Approved</strong></td>
+                      <td style="text-align: left; padding-top: 20px; width: 1%;">:</td>
+                      <td style="text-align: left; padding-top: 20px; width: 65%;"><strong style="font-size: 18px;">Rp. {{ "{:,.0f}".format(data[0][6]) }}</strong></td>  
+                    </tr>
+                  </table>
+                </address>
+              </div>
+            </div>
+            <hr>
+            <div class="row">
+              <div class="col-md-12">
+                <table class="table table-bordered">
+                  <thead>
+                    <tr style="text-align: center;">
+                      <th>No</th>
+                      <th>Nama Barang / Jasa</th>
+                      <th>Spesifikasi Barang/Jasa</th>
+                      <th>QTY</th>
+                      <th>Tanggal Dibutuhkan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for row in data %}
+                    <tr>
+                      <td style="text-align: center;">{{ row[20]}}</td>
+                      <td>{{ row[21] }}</td>  
+                      <td>{{ row[22] }}</td>  
+                      <td>{{ row[23] }}</td>  
+                      <td>{{ row[24] }}</td>  
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+                <hr>
+              </div>
+            </div>
+  
+            <div class="row">
+              <div class="col-md-6">
+                <p class="lead">Remarks:</p>
+                <hr>
+                <p class="text-muted well well-sm shadow-none" style="margin-top: 10px; padding-left: 30px;">
+                  <i class="fa fa-check" aria-hidden="true"></i> Lampirkan gambar jika ada.
+                </p>
+                <p class="text-muted well well-sm shadow-none" style="margin-top: 10px; padding-left: 30px;">
+                  <i class="fa fa-check" aria-hidden="true"></i> Urgent / Penunjukan vendor langsung harus melampirkan form walver.
+                </p>
+              </div>
+              <div class="col-md-6">
+                <p class="lead">Documents:</p>
+                <hr>
+                <table class="table table-bordered" id="approval-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 10px">No</th>
+                      <th style="text-align: center;">File Name</th>
+                      <th style="width: 90px; text-align: center;">Preview</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style="width: 1%">1.</td>
+                      <td style="width: 50%">
+                        <p>{{ data[0][25] }}</p>
+                      </td>
+                      <td style="text-align: center;">
+                        <!-- <link rel="image_src" href="image url" /> -->
+                        <img src="{{ url_for('static', filename='uploads/luffy.jpeg') }}" height="60" width="120">
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <hr>
+            <!-- /.col -->
+
+            <div class="row invoice-info" style="padding-top: 10px;">
+                <div class="col-sm-6 invoice-col">
+                  <address>
+                    <table class="" style="width:100%; border-spacing: 0;">
+                      <tr>
+                        <td style="text-align: left; width: 15%; padding-top: 10px;  padding-bottom: 10px">Dibuat Oleh</td>
+                        <td style="text-align: left; width: 1%; padding-top: 10px;  padding-bottom: 10px">:</td>
+                        <td style="text-align: left; width: 65%; font-weight: bold; padding-top: 10px; padding-bottom: 10px">{{ data[0][3] }}</td>  
+                      </tr>
+                        {% if current_user_id == data[0][9] %}
+                        <tr>
+                          <td style="text-align: left; width: 15%; padding-top: 10px;">Disetujui Oleh</td>
+                          <td style="text-align: left; width: 1%; padding-top: 10px;">:</td>
+                          <td style="text-align: left; width: 65%; font-weight: bold; padding-top: 10px;">{{ data[0][11] }}</td>  
+                        </tr>
+                        <tr>
+                            <td style="text-align: left; width: 15%; padding-top: 10px;">Status Persetujuan</td>
+                            <td style="text-align: left; width: 1%; padding-top: 10px;">:</td>
+                            <td style="text-align: left; width: 65%; font-weight: bold; padding-top: 10px;">
+                                {% if data[0][8] is none %}
+                                    <span class="badge badge-warning">PENDING</span>
+                                {% elif data[0][8] == 'APPROVED' %}
+                                    <span class="badge badge-success">APPROVED</span>
+                                {% elif data[0][8] == 'REJECTED' %}
+                                    <span class="badge badge-danger">REJECTED</span>
+                                {% else %}
+                                    {{ data[0][8] }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                          <td style="text-align: left; width: 15%; padding-top: 10px; padding-top: 10px;">Action</td>
+                          <td style="text-align: left; width: 1%; padding-top: 10px;">:</td>
+                          <td style="padding-top: 10px;">
+                            <button type="button" class="btn btn-success btn-sm" title="Approve PR" data-toggle="modal" data-target="#modal-approve" data-id="">
+                                <i class="fa fa-check" aria-hidden="true"></i> APPROVED
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm" title="Approve PR" data-toggle="modal" data-target="#modal-reject" data-id="">
+                                <i class="fa fa-times" aria-hidden="true"></i> REJECT
+                            </button>
+                          </td>
+                        </tr>
+                        {% elif current_user_id == data[0][13] and data[0][8] == 'APPROVED' %}
+                        <tr>
+                          <td style="text-align: left; width: 15%; padding-top: 10px;">Disetujui Oleh</td>
+                          <td style="text-align: left; width: 1%; padding-top: 10px;">:</td>
+                          <td style="text-align: left; width: 65%; font-weight: bold; padding-top: 10px;">{{ data[0][15] }}</td>  
+                        </tr>
+                        <tr>
+                            <td style="text-align: left; width: 15%; padding-top: 10px;">Status Persetujuan</td>
+                            <td style="text-align: left; width: 1%; padding-top: 10px;">:</td>
+                            <td style="text-align: left; width: 65%; font-weight: bold; padding-top: 10px;">
+                                {% if data[0][12] is none %}
+                                    <span class="badge badge-warning">PENDING</span>
+                                {% elif data[0][12] == 'APPROVED' %}
+                                    <span class="badge badge-success">APPROVED</span>
+                                {% elif data[0][12] == 'REJECTED' %}
+                                    <span class="badge badge-danger">REJECTED</span>
+                                {% else %}
+                                    {{ data[0][12] }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                          <td style="text-align: left; width: 15%; padding-top: 10px; padding-top: 10px;">Action</td>
+                          <td style="text-align: left; width: 1%; padding-top: 10px;">:</td>
+                          <td style="padding-top: 10px;">
+                            <button type="button" class="btn btn-success btn-sm" title="Approve PR" data-toggle="modal" data-target="#modal-approve" data-id="">
+                                <i class="fa fa-check" aria-hidden="true"></i> APPROVED
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm" title="Approve PR" data-toggle="modal" data-target="#modal-reject" data-id="">
+                                <i class="fa fa-times" aria-hidden="true"></i> REJECT
+                            </button>
+                          </td>
+                        </tr>
+                        {% elif current_user_id == data[0][17] and data[0][13] == 'APPROVED' %}
+                        <tr>
+                          <td style="text-align: left; width: 15%; padding-top: 10px;">Disetujui Oleh</td>
+                          <td style="text-align: left; width: 1%; padding-top: 10px;">:</td>
+                          <td style="text-align: left; width: 65%; font-weight: bold; padding-top: 10px;">{{ data[0][19] }}</td>  
+                        </tr>
+                        <tr>
+                            <td style="text-align: left; width: 15%; padding-top: 10px;">Status Persetujuan</td>
+                            <td style="text-align: left; width: 1%; padding-top: 10px;">:</td>
+                            <td style="text-align: left; width: 65%; font-weight: bold; padding-top: 10px;">
+                                {% if data[0][16] is none %}
+                                    <span class="badge badge-warning">PENDING</span>
+                                {% elif data[0][16] == 'APPROVED' %}
+                                    <span class="badge badge-success">APPROVED</span>
+                                {% elif data[0][16] == 'REJECTED' %}
+                                    <span class="badge badge-danger">REJECTED</span>
+                                {% else %}
+                                    {{ data[0][16] }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                          <td style="text-align: left; width: 15%; padding-top: 10px; padding-top: 10px;">Action</td>
+                          <td style="text-align: left; width: 1%; padding-top: 10px;">:</td>
+                          <td style="padding-top: 10px;">
+                            <button type="button" class="btn btn-success btn-sm" title="Approve PR" data-toggle="modal" data-target="#modal-approve" data-id="">
+                                <i class="fa fa-check" aria-hidden="true"></i> APPROVED
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm" title="Approve PR" data-toggle="modal" data-target="#modal-reject" data-id="">
+                                <i class="fa fa-times" aria-hidden="true"></i> REJECT
+                            </button>
+                          </td>
+                        </tr>
+                        {% else %}
+                        <table class="table table-striped">
+                            <thead>
+                              <tr style="text-align: left;">
+                                <th>Approver</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                                {% set approvals = [
+                                    {'username': data[0][11], 'status': data[0][8]},
+                                    {'username': data[0][15], 'status': data[0][12]},
+                                    {'username': data[0][19], 'status': data[0][16]}
+                                ] %}
+                                {% for approval in approvals %}
+                                    {% if approval.username is not none %}
+                                        <tr>
+                                            <td>{{ approval.username }}</td>
+                                            <td style="text-align: left; width: 65%; font-weight: bold;">
+                                                {% if approval.status is none %}
+                                                    <span class="badge badge-warning">PENDING</span>
+                                                {% elif approval.status == 'APPROVED' %}
+                                                    <span class="badge badge-success">APPROVED</span>
+                                                {% elif approval.status == 'REJECTED' %}
+                                                    <span class="badge badge-danger">REJECTED</span>
+                                                {% else %}
+                                                    {{ approval.status }}
+                                                {% endif %}
+                                            </td>
+                                            <td style="text-align: left; width: 65%; font-weight: bold;">
+                                                <a href="{{ url_for('pr.pr_temp_submit') }}" class="btn btn-app bg-default" title="add pr">
+                                                    <i class="fa fa-envelope" aria-hidden="true"></i> Send Mail
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            </tbody>
+                          </table>
+                        {% endif %}
+                    </table>
+                  </address>
+                </div>
+            </div>
+            <hr>
+          <!-- /.col -->
+          <!-- this row will not appear when printing -->
+          <div class="row no-print" style="padding-top: 50px; padding-bottom: 50px">
+            <div class="col-12">
+              <!-- <a href="invoice-print.html" rel="noopener" target="_blank" class="btn btn-default"><i class="fas fa-print"></i> Print</a> -->
+              <a href="{{ url_for('pr.pr_list') }}" class="btn btn-default float-right" title="Detail">Back to list</a>
+              <button type="button" class="btn btn-danger float-right" style="margin-right: 5px;">
+                  <i class="fa fa-file-pdf" aria-hidden="true"></i> Generate PDF
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- /.invoice -->
+      </div><!-- /.col -->
+    </div><!-- /.row -->
+  </div><!-- /.container-fluid -->
+</section>
+<!-- /.content -->
+
+<!-- APPROVE MODAL -->
+<div class="modal fade" id="modal-approve">
+    <div class="modal-dialog">
+      <div class="modal-content bg-success">
+        <div class="modal-header">
+          <h4 class="modal-title">You will approve this PR</h4>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <form action="{{ url_for('pr.pr_approved', no_pr=data[0][0]) }}" method="POST">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="exampleInputEmail1">Reason Approved</label>
+            <textarea class="form-control" rows="3" id="spesifikasi1" name="spesifikasi1" placeholder="Enter ..." required></textarea>
+          </div>
+            <div class="form-group">
+            <div id="menu-checkboxes">
+              </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-default">Save</button>
+        </div>
+      </form>
+      </div>
+      <!-- /.modal-content -->
+    </div>
+  </div>
+  <!--END APPROVE MODAL -->
+
+<!-- APPROVE MODAL -->
+<div class="modal fade" id="modal-reject">
+    <div class="modal-dialog">
+      <div class="modal-content bg-danger">
+        <div class="modal-header">
+          <h4 class="modal-title">You will Reject this PR</h4>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <form action="{{ url_for('user.register') }}" method="POST">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="exampleInputEmail1">Reason Rejected</label>
+            <textarea class="form-control" rows="3" id="spesifikasi1" name="spesifikasi1" placeholder="Enter ..." required></textarea>
+          </div>
+            <div class="form-group">
+            <div id="menu-checkboxes">
+              </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-default">Save</button>
+        </div>
+      </form>
+      </div>
+      <!-- /.modal-content -->
+    </div>
+  </div>
+  <!--END APPROVE MODAL -->
+
+
+
+{% endblock %}
+<!-- END INHERETENCE CONTENT -->
