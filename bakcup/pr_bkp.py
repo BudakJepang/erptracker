@@ -724,3 +724,142 @@ def pr_approved(no_pr):
             cur.close()
     
     return redirect(url_for('pr.pr_list')) 
+
+
+# PR EDIT BAKCUP 
+@pr_blueprint.route('/pr_edit/<no_pr>', methods=['GET', 'POST'])
+def pr_edit(no_pr):
+    from app import mysql
+
+    # GET ENTITY AND DEPARTMENT
+    user_entities = session.get('entities', [])
+    entity_ids = [entity['entity_id'] for entity in user_entities]
+    cursor = mysql.connection.cursor()
+
+    if entity_ids:
+        cursor.execute("SELECT id, entity, entity_name FROM entity WHERE id IN %s", (tuple(entity_ids),))
+        entities = cursor.fetchall()
+    else:
+        entities = []
+
+    cursor.execute("SELECT id, entity_id, department, department_name FROM department WHERE entity_id = 1")
+    departments = cursor.fetchall()
+
+    cursor.execute("SELECT id, username, email FROM user_accounts WHERE level = 4")
+    approver = cursor.fetchall()
+
+    if request.method == 'POST':
+        # PR HEADER VARIABLES
+        entity = request.form['entity']
+        department = request.form['department']
+        tanggal_permintaan = request.form['tanggal_permintaan']
+        requester_name = session.get('username', 'system')
+        requester_id = session.get('id', 'system')
+        total_budget_approved = request.form['total_budget_approved']
+        nama_project = request.form['nama_project']
+        remarks = None
+
+        # ADD CONDITION FOR ENTITY ID
+        entity_map = {
+            'CNI': 1, 'OID': 2, 'RKI': 3, 'DMI': 4, 'AGI': 5,
+            'OPN': 6, 'ATI': 7, 'AMP': 8, 'TKM': 9
+        }
+        entity_id = entity_map.get(entity, None)
+
+        # UPDATE TABLE PR_HEADER
+        update_header_query = '''
+            UPDATE pr_header 
+            SET tanggal_permintaan = %s, requester_id = %s, requester_name = %s, 
+                nama_project = %s, entity_id = %s, total_budget_approved = %s, remarks = %s, updated_at = %s
+            WHERE no_pr = %s
+        '''
+        today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        cursor.execute(update_header_query, (tanggal_permintaan, requester_id, requester_name, nama_project, entity_id, total_budget_approved, remarks, today, no_pr))
+        mysql.connection.commit()
+
+        # UPDATE TABLE PR_APPROVAL
+        delete_approval_query = "DELETE FROM pr_approval WHERE no_pr = %s"
+        cursor.execute(delete_approval_query, (no_pr,))
+        mysql.connection.commit()
+
+        approval_list = []
+        idx = 1
+        while True:
+            try:
+                approval_user_id = request.form[f'approval_user_id{idx}']
+                approval_list.append((no_pr, approval_user_id, None, None, today))
+                idx += 1
+            except KeyError:
+                break
+
+        if approval_list:
+            insert_approval_query = '''
+                INSERT INTO pr_approval (no_pr, approval_user_id, status, notes, created_at)
+                VALUES (%s, %s, %s, %s, %s)
+            '''
+            cursor.executemany(insert_approval_query, approval_list)
+            mysql.connection.commit()
+
+        # UPDATE TABLE PR_DETAIL
+        delete_detail_query = "DELETE FROM pr_detail WHERE no_pr = %s"
+        cursor.execute(delete_detail_query, (no_pr,))
+        mysql.connection.commit()
+
+        items = []
+        index = 1
+        while True:
+            try:
+                nama_item = request.form[f'nama_item{index}']
+                spesifikasi = request.form[f'spesifikasi{index}']
+                qty = request.form[f'qty{index}']
+                tanggal = request.form[f'tanggal{index}']
+                items.append((no_pr, index, nama_item, spesifikasi, qty, tanggal, today, today))
+                index += 1
+            except KeyError:
+                break
+
+        if items:
+            insert_detail_query = '''
+                INSERT INTO pr_detail (no_pr, item_no, nama_item, spesifikasi, qty, tanggal, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            '''
+            cursor.executemany(insert_detail_query, items)
+            mysql.connection.commit()
+
+        # HANDLE FILE UPLOADS
+        upload_files = request.files.getlist('files[]')
+        upload_docs = []
+        for i, file in enumerate(upload_files):
+            if file:
+                filename = secure_filename(file.filename)
+                upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                file.save(upload_path)
+                upload_docs.append((no_pr, filename, upload_path, requester_id, today, requester_id, today))
+
+        if upload_docs:
+            delete_docs_query = "DELETE FROM pr_docs_reference WHERE no_pr = %s"
+            cursor.execute(delete_docs_query, (no_pr,))
+            mysql.connection.commit()
+
+            insert_docs_query = '''
+                INSERT INTO pr_docs_reference (no_pr, doc_name, path, created_by, created_at, updated_by, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            '''
+            cursor.executemany(insert_docs_query, upload_docs)
+            mysql.connection.commit()
+
+        cursor.close()
+        flash('PR has been updated', 'success')
+        return redirect(url_for('pr.pr_list'))
+
+    # FETCH EXISTING PR DATA
+    cursor.execute("SELECT * FROM pr_header WHERE no_pr = %s", (no_pr,))
+    pr_header = cursor.fetchone()
+
+    cursor.execute("SELECT * FROM pr_detail WHERE no_pr = %s", (no_pr,))
+    pr_details = cursor.fetchall()
+
+    cursor.execute("SELECT * FROM pr_approval WHERE no_pr = %s", (no_pr,))
+    pr_approvals = cursor.fetchall()
+
+    return render_template('pr/pr_edit.html', pr_header=pr_header, pr_details=pr_details, pr_approvals=pr_approvals, entities=entities, departments=departments, approver=approver)

@@ -73,7 +73,7 @@ def pr_list():
         )
         AND (ph.requester_id = %s OR pa.approval_user_id = %s)
         GROUP BY 1,2,3,4,5,6,7,8,9,10
-        ORDER BY 2 DESC, 1 DESC
+        ORDER BY ph.no_pr DESC
         '''
         cursor.execute(query, (user_id, user_id, user_id))
         data = cursor.fetchall()
@@ -240,7 +240,6 @@ def generate_pdf():
 # ====================================================================================================================================
 # PR FORM SUBMIT
 # ====================================================================================================================================
-
 # GET SEQUENCE PR AUTONUMBER
 def get_next_sequence(entity, department):
     current_date = datetime.now()
@@ -459,7 +458,11 @@ import logging
 # Set up logging
 # logging.basicConfig(level=logging.DEBUG)
 
+
+
+# ====================================================================================================================================
 # PT DETAIL
+# ====================================================================================================================================
 @pr_blueprint.route('/pr_detail_page/<no_pr>', methods=['GET', 'POST'])
 def pr_detail_page(no_pr):
     from app import mysql
@@ -484,7 +487,6 @@ def pr_detail_page(no_pr):
             FROM pr_header ph 
             LEFT JOIN entity e ON ph.entity_id = e.id
             WHERE ph.no_pr = %s
-            ORDER BY 2 DESC
     """
     cur.execute(query, [no_pr])
     pr_header = cur.fetchall()
@@ -515,9 +517,13 @@ def pr_detail_page(no_pr):
     cur.close()
 
     return render_template('pr/pr_detail.html', pr_header=pr_header, pr_detail=pr_detail, pr_approval=pr_approval, current_user_id=current_user_id)
+# ====================================================================================================================================
 
 
+
+# ====================================================================================================================================
 # PR APPROVED
+# ====================================================================================================================================
 def send_sequence_mail_pr(no_pr):
     from app import mysql
     cur = mysql.connection.cursor()
@@ -582,3 +588,60 @@ def pr_approved(no_pr):
             cur.close()
     
     return redirect(url_for('pr.pr_list')) 
+# ====================================================================================================================================
+
+
+
+# ====================================================================================================================================
+# PR UDPATE
+# ====================================================================================================================================
+@pr_blueprint.route('/pr_edit/<no_pr>', methods=['GET', 'POST'])
+def pr_edit(no_pr):
+    from app import mysql
+
+    cur = mysql.connection.cursor()
+
+    # GET PR_HEADER
+    cur.execute('''
+        SELECT DISTINCT 
+            ph.no_pr,
+            ph.tanggal_permintaan,
+            ph.requester_id,
+            ph.requester_name,
+            ph.entity_id,
+            ph.nama_project,
+            ph.total_budget_approved,
+            ph.remarks,
+            e.entity,
+            e.entity_name
+        FROM pr_header ph 
+        LEFT JOIN entity e ON ph.entity_id = e.id
+        WHERE ph.no_pr = %s''', (no_pr, ))
+
+    pr_header = cur.fetchone()
+
+    # GET PR_DETAIL
+    cur.execute('''
+        SELECT
+            no_pr,
+            item_no,
+            nama_item,
+            spesifikasi,
+            qty,
+            tanggal
+        FROM pr_detail
+        WHERE no_pr = %s''', (no_pr, ))
+
+    pr_detail = cur.fetchall()
+
+    if pr_header is None:
+        flash('PR Not Found', 'danger')
+        return redirect(url_for('pr.pr_list'))
+
+   
+
+    # return render_template('pr/pr_edit.html', pr_header=pr_header, pr_details=pr_details, pr_approvals=pr_approvals, entities=entities, departments=departments, approver=approver)
+    return render_template('pr/pr_edit.html', pr_header=pr_header, pr_detail=pr_detail)
+# ====================================================================================================================================
+
+
