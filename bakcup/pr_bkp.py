@@ -863,3 +863,26 @@ def pr_edit(no_pr):
     pr_approvals = cursor.fetchall()
 
     return render_template('pr/pr_edit.html', pr_header=pr_header, pr_details=pr_details, pr_approvals=pr_approvals, entities=entities, departments=departments, approver=approver)
+
+
+# DELETE ID BY DETAIL
+
+# Mengambil data lama dari database
+cur.execute("SELECT id FROM pr_detail WHERE no_pr = %s", (no_pr,))
+old_details = cur.fetchall()
+old_ids = {detail[0] for detail in old_details}
+
+# Membuat set ID baru berdasarkan panjang detail dari form
+new_ids = set(range(1, len(details) + 1))
+
+cur.execute("SELECT id FROM pr_detail WHERE no_pr = %s", (no_pr,))
+old_details = cur.fetchall()
+old_ids = {detail[0] for detail in old_details}
+
+# Membuat set ID baru berdasarkan panjang detail dari form
+new_ids = set(range(1, len(details) + 1))
+
+# Menghapus row yang dihapus dari form
+to_delete = old_ids - new_ids
+for del_id in to_delete:
+cur.execute("DELETE FROM pr_detail WHERE no_pr = %s AND id = %s", (no_pr, del_id))
