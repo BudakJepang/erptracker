@@ -384,15 +384,15 @@ def pr_temp_submit():
         while True:
             try:
                 approval_user_id = request.form[f'approval_user_id{idx}']
-                approval_list.append((no_pr, approval_user_id, None, None, today))
+                approval_list.append((no_pr, idx, approval_user_id, None, None, today))
                 idx += 1
             except KeyError:
                 break
 
         if approval_list:
             insert_approval_query = '''
-                INSERT INTO pr_approval (no_pr, approval_user_id, status, notes, created_at)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO pr_approval (no_pr, approval_no, approval_user_id, status, notes, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
             '''
             cursor.executemany(insert_approval_query, approval_list)
             mysql.connection.commit()
@@ -604,7 +604,7 @@ def pr_edit(no_pr):
     cur.execute('''
         SELECT DISTINCT 
             ph.no_pr,
-            ph.tanggal_permintaan,
+            DATE(ph.tanggal_permintaan)tanggal_permintaan,
             ph.requester_id,
             ph.requester_name,
             ph.entity_id,
@@ -640,6 +640,7 @@ def pr_edit(no_pr):
     cur.execute('''
         SELECT 
             pa.no_pr,
+            pa.approval_no,
             pa.approval_user_id,
             ua.username,
             pa.status,
@@ -669,7 +670,7 @@ def pr_edit(no_pr):
 
     if request.method == 'POST':
 
-        # FOR UPDATE PR_HEADER VALUES
+        # FOR UPDATE PR_HEADER VALUES________________________________________________________________________________
         nama_project = request.form['nama_project']
         total_budget = request.form['total_budget_approved']
         today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -684,53 +685,19 @@ def pr_edit(no_pr):
             print(e)
 
         mysql.connection.commit()
-
-        # FOR UPDATE PR_DETAIL VALUES
-        # nama_item = request.form.getlist('nama_item')
-        # spesifikasi = request.form.getlist('spesifikasi')
-        # qty = request.form.getlist('qty')
-        # tanggal = request.form.getlist('tanggal')
-
-        # # DELETE PR_DETAIL FOR UPDATE
-        # cur.execute("DELETE FROM pr_detail WHERE no_pr = %s", (no_pr, ))
-        # mysql.connection.commit()
-
-        # # INSERT NEW UPDATE
-        # items = []
-        # index = 1
-        # while True:
-        #     try:
-        #         nama_item = request.form[f'nama_item{index}']
-        #         spesifikasi = request.form[f'spesifikasi{index}']
-        #         qty = request.form[f'qty{index}']
-        #         tanggal = request.form[f'tanggal{index}']
-        #         items.append((no_pr, index, nama_item, spesifikasi, qty, tanggal, today, today))
-        #         index += 1
-        #     except KeyError:
-        #         break
-
-        # if items:
-        #     insert_detail_query = '''
-        #         INSERT INTO pr_detail (no_pr, item_no, nama_item, spesifikasi, qty, tanggal, created_at, updated_at)
-        #         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        #     '''
-        #     cur.executemany(insert_detail_query, items)
-        #     mysql.connection.commit()
-
-        # TEST NEW LOGIC
-        today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    # Fetch existing details from the database
-        cur = mysql.connection.cursor()
+        # FOR UPDATE DETAIL__________________________________________________________________________________________
+        # GETTING LIST DETAIL
         cur.execute("SELECT item_no, nama_item, spesifikasi, qty, tanggal FROM pr_detail WHERE no_pr = %s", (no_pr,))
         existing_details = cur.fetchall()
-        
-        # Convert fetched details to a dictionary for easier comparison
+
+        # CONVERT LIST DETAIL QUERY YANG SUDAH ADA DI TABLE TO DICT AGAR MUDAH UNTUK COMPARE ID YANG AKAN DIEKSEKUSI
         existing_details_dict = {item[0]: item for item in existing_details}
-        
-        # Get the new details from the form
+
+        # DAPATKAN VALUE BARU DARI FORM HTML UNTUK DI INSERT, UPDATE ATAU DELETE
         new_details = []
         index = 1
+        # deleted_indices = []
         while True:
             try:
                 nama_item = request.form[f'nama_item{index}']
@@ -741,33 +708,39 @@ def pr_edit(no_pr):
                 index += 1
             except KeyError:
                 break
-        
-        # Convert new details to a dictionary for easier comparison
+
+        # CONVERT ID YANG BARU SAJA DI INPUT DALAM HTML UNTUK DIKOMPARASI DENGAN ID YANG LAMA
         new_details_dict = {item[0]: item for item in new_details}
-        
-        # Identify details to be inserted, updated, and deleted
+
+        # IDENTIFIKASI DETAIL YANG ININ DI INSERT, UDPATE ATAU DELETE
         details_to_insert = []
         details_to_update = []
         details_to_delete = []
-        
+        today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        # BUAT LOOPING DARI INDEX (ITEM NUMBER) HTML DAN KONDISI
+        # KONDISINYA JIKA TIDAK ADA INDEX BARU PADA INPUTAN MAKA STATUSNYA DI INSERT BARU
+        # JIKA STATUSNYA INDEX TERSEBUT ADA TAPI ADA PERUBAHAN MAKA AKAN DIUPDATE DATANYA
+        # JIKA STATUSNYA INDEX TERSEBUT DIKOMPARE ANTARA INDEX LAMA DENGAN INDEX BARU DAN TERNYATA TIDAK ADA PADA INDEX BARU MAKA DATA TERSEBUT AKAN DIHAPUS
         for index, detail in new_details_dict.items():
             if index not in existing_details_dict:
                 details_to_insert.append((no_pr, index, detail[1], detail[2], detail[3], detail[4], today, today))
             elif detail != existing_details_dict[index]:
                 details_to_update.append((detail[1], detail[2], detail[3], detail[4], today, no_pr, index))
-        
+
         for index in existing_details_dict:
             if index not in new_details_dict:
                 details_to_delete.append(index)
-        
-        # Perform insert, update, and delete operations
+
+        # INSERT NEW DATA
         if details_to_insert:
             insert_query = '''
                 INSERT INTO pr_detail (no_pr, item_no, nama_item, spesifikasi, qty, tanggal, created_at, updated_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             '''
             cur.executemany(insert_query, details_to_insert)
-        
+
+        # UDPATE EXISTING DATA
         if details_to_update:
             update_query = '''
                 UPDATE pr_detail
@@ -775,40 +748,74 @@ def pr_edit(no_pr):
                 WHERE no_pr = %s AND item_no = %s
             '''
             cur.executemany(update_query, details_to_update)
-        
+
+        # DELETE OLD DATA WHEN NOT USED
         if details_to_delete:
             delete_query = '''
                 DELETE FROM pr_detail
                 WHERE no_pr = %s AND item_no = %s
             '''
             cur.executemany(delete_query, [(no_pr, index) for index in details_to_delete])
+
+        mysql.connection.commit()
+
+
+        # INSERT NEW APPROVAL________________________________________________________________________________________
+        # GETTING LIST APPROVAL
+        cur.execute("SELECT approval_no, approval_user_id, status, notes FROM pr_approval WHERE no_pr = %s", (no_pr,))
+        existing_approval = cur.fetchall()
+        existing_approval_dict = {item[0]: item for item in existing_approval}
         
-        mysql.connection.commit()
-
-        # DELETE PR_DETAIL FOR UPDATE
-        cur.execute("DELETE FROM pr_approval WHERE no_pr = %s", (no_pr, ))
-        mysql.connection.commit()
-
-        # INSERT NEW APPROVAL
-        approval_list = []
+        new_approval = []
         idx = 1
-        today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
         while True:
             try:
-                approval_user_id = request.form[f'approval_user_id{idx}']
-                approval_list.append((no_pr, approval_user_id, None, None, today))
+                approval_user_id = request.form[f'approval{idx}_user_id']
+                new_approval.append((idx, approval_user_id))
                 idx += 1
             except KeyError:
                 break
+        
+        new_approval_dict = {item[0]: item for item in new_approval}
 
-        if approval_list:
-            insert_approval_query = '''
-                INSERT INTO pr_approval (no_pr, approval_user_id, status, notes, created_at)
-                VALUES (%s, %s, %s, %s, %s)
+        approval_to_insert = []
+        approval_to_update = []
+        approval_to_delete = []
+
+        for idx, value in new_approval_dict.items():
+            if idx not in existing_approval_dict:
+                approval_to_insert.append((no_pr, idx, value[1], None, None, today))
+            elif value != existing_approval_dict[idx]:
+                approval_to_update.append((value[1], None, None, today, no_pr, idx))
+
+        for idx in existing_approval_dict:
+            if idx not in new_approval_dict:
+                approval_to_delete.append(idx)
+
+        if approval_to_insert:
+            insert_query = '''
+                INSERT INTO pr_approval (no_pr, approval_no, approval_user_id, status, notes, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
             '''
-            cur.executemany(insert_approval_query, approval_list)
-            mysql.connection.commit()
+            cur.executemany(insert_query, approval_to_insert)
+
+        if approval_to_update:
+            update_query = '''
+                UPDATE pr_approval
+                SET approval_user_id = %s, status = %s, notes = %s, created_at = %s
+                WHERE no_pr = %s AND approval_no = %s
+            '''
+            cur.executemany(update_query, approval_to_update)
+
+        if approval_to_delete:
+            delete_query = '''
+                DELETE FROM pr_approval
+                WHERE no_pr = %s AND approval_no = %s
+            '''
+            cur.executemany(delete_query, [(no_pr, index) for index in approval_to_delete])
+
+        mysql.connection.commit()
+                
 
 
         cur.close()
