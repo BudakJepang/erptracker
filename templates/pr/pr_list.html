@@ -34,7 +34,9 @@
               <div class="card">
                 <div class="card-header">
                   <h3 class="card-title"></h3>
+                  {% if session.level != 4 %}
                   <a href="{{ url_for('pr.pr_temp_submit') }}" class="btn btn-app bg-default" title="add pr"><i class="fas fa-edit"></i> Add PR</a>
+                  {% endif %}
                 </div>
                 <!-- /.card-header -->
                 <div class="card-body">
@@ -60,9 +62,10 @@
                             <td>{{ data[21] }}</td>
                             <td style="text-align: right;">{{ "{:,.0f}".format(data[7]) }}</td>
                             <td>
-                              <!-- <button type="button" class="btn bg-gradient-danger btn-sm"><i class="fa fa-file-pdf" title="PDF Preview"></i></button> -->
-                              <a href="{{ url_for('pr.pr_detail_page', no_pr=data[0]) }}"class="btn btn-default btn-sm" title="Detail"><i class="fa fa-info-circle" aria-hidden="true"></i></a>
-                              <a href="{{ url_for('pr.pr_edit', no_pr=data[0]) }}"class="btn btn-default btn-sm" title="Edit PR"><i class="fa fa-edit" aria-hidden="true"></i></a>
+                              <a href="{{ url_for('pr.pr_detail_page', no_pr=data[0]) }}" class="btn btn-default btn-sm" title="Detail"><i class="fa fa-info-circle" aria-hidden="true"></i></a>
+                              {% if session.level != 4 %}
+                              <a href="{{ url_for('pr.pr_edit', no_pr=data[0]) }}" class="btn btn-default btn-sm" title="Edit PR"><i class="fa fa-edit" aria-hidden="true"></i></a>
+                              {% endif %}
                             </td>
                             <!-- PUT ACTION BUTTON HERE-->
                           </tr>

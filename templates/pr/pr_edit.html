@@ -113,7 +113,7 @@
                     </thead>
                     <tbody>
                       {% for detail in pr_detail %}
-                      <tr>
+                      <tr data-index="{{ detail[1] }}">
                           <td>{{ detail[1] }}</td>
                           <td style="width: 300px">
                               <input class="form-control" type="text" name="nama_item{{ detail[1] }}" value="{{ detail[2] }}" placeholder="Enter ..." required>
@@ -140,6 +140,7 @@
                       </tr>
                       {% endfor %}
                   </tbody>
+                  
                   </table>
                 </div>
 
@@ -164,14 +165,14 @@
                           </tr>
                         </thead>
                         <tbody>
-                          {% for approval_list in pr_approval%}
-                          <tr>
-                            <td>1</td>
+                          {% for approval_list in pr_approval %}
+                          <tr data-index="{{ loop.index }}">
+                            <td>{{ loop.index }}</td>
                             <td style="width: 80%">
-                              <select class="form-control select2bs4" name="approval1_user_id" id="approval1_user_id" style="width: 100%;" required>
-                                <option value="{{ approval_list[2] }}">{{ approval_list[2] }}</option>
+                              <select class="form-control select2bs4" name="approval{{ loop.index }}_user_id" id="approval{{ loop.index }}_user_id" style="width: 100%;" required>
+                                <option value="{{ approval_list[2] }}">{{ approval_list[3] }}</option>
                                 {% for approver in approver %}
-                                <option value="{{ approver[0] }}" data-entity-id="{{ approver[1] }}">{{ approver[1] }}</option>
+                                <option value="{{ approver[0] }}">{{ approver[1] }}</option>
                                 {% endfor %}
                               </select>
                             </td>
@@ -244,168 +245,79 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+  
   $(document).ready(function() {
     function updateRowNumbers(tableId) {
-      $(tableId + " tbody tr").each(function(index) {
-        $(this).find("td:first").text((index + 1) + ".");
-        $(this).find("input, select, textarea").each(function() {
-          const name = $(this).attr("name");
-          if (name) {
-            const newName = name.replace(/\d+/, (index + 1));
-            $(this).attr("name", newName);
-          }
+        $(tableId + " tbody tr").each(function(index) {
+            $(this).attr("data-index", index + 1);
+            $(this).find("td:first").text((index + 1) + ".");
+            $(this).find("input, select, textarea").each(function() {
+                const name = $(this).attr("name");
+                if (name) {
+                    const newName = name.replace(/\d+/, (index + 1));
+                    $(this).attr("name", newName);
+                }
+            });
         });
-      });
     }
 
     $("#add-row").click(function() {
-    let rowNumber = $("#pr-detail-table tbody tr").length + 1;
-    let newRow = `
-    <tr>
-        <td>${rowNumber}.</td>
-        <td style="width: 300px"><input class="form-control" type="text" name="nama_item${rowNumber}" required placeholder="Enter ..."></td>
-        <td><textarea class="form-control" rows="3" name="spesifikasi${rowNumber}" placeholder="Enter ..."></textarea></td>
-        <td style="width: 120px"><input class="form-control" type="number" name="qty${rowNumber}" required placeholder="Enter ..."></td>
-        <td style="width: 220px">
-            <div class="input-group date" data-target-input="nearest">
-                <input type="date" name="tanggal${rowNumber}" class="form-control" />
-                <div class="input-group-append" data-target="#reservationdate${rowNumber}" data-toggle="">
-                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
-                </div>
-            </div>
-        </td>
-        <td style="text-align: center;">
-            <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete PR">
-                <i class="fa fa-trash"></i>
-            </button>
-        </td>
-    </tr>`;
-    $("#pr-detail-table tbody").append(newRow);
-    updateRowNumbers("#pr-detail-table");
-});
-
-
-function updateRowNumbers(tableId) {
-    $(`${tableId} tbody tr`).each(function(index) {
-        $(this).find("td:first").text(`${index + 1}.`);
-        $(this).find("input, textarea").each(function() {
-            let name = $(this).attr('name');
-            let newName = name.replace(/\d+$/, `${index + 1}`);
-            $(this).attr('name', newName);
-        });
-    });
-}
-
-    // Menambahkan baris baru
-    $("#add-approval").click(function() {
-        const rowNumber = $("#approval-table tbody tr").length + 1;
-        const newRow = `
-        <tr>
+        let rowNumber = $("#pr-detail-table tbody tr").length + 1;
+        let newRow = `
+        <tr data-index="${rowNumber}">
             <td>${rowNumber}.</td>
-            <td style="width: 80%">
-                <select class="form-control select2bs4" name="approval_user_id${rowNumber}" id="approval_user_id${rowNumber}" style="width: 100%;" required>
-                    <option value="">Select Approval ...</option>
-                    {% for approver in approver %}
-                    <option value="{{ approver[0] }}" data-entity-id="{{ approver[1] }}">{{ approver[1] }}</option>
-                    {% endfor %}
-                </select>
+            <td style="width: 300px"><input class="form-control" type="text" name="nama_item${rowNumber}" required placeholder="Enter ..."></td>
+            <td><textarea class="form-control" rows="3" name="spesifikasi${rowNumber}" placeholder="Enter ..."></textarea></td>
+            <td style="width: 120px"><input class="form-control" type="number" name="qty${rowNumber}" required placeholder="Enter ..."></td>
+            <td style="width: 220px">
+                <div class="input-group date" data-target-input="nearest">
+                    <input type="date" name="tanggal${rowNumber}" class="form-control" />
+                    <div class="input-group-append" data-target="#reservationdate${rowNumber}" data-toggle="">
+                        <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                    </div>
+                </div>
             </td>
             <td style="text-align: center;">
-                <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Approval">
+                <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete PR">
                     <i class="fa fa-trash"></i>
                 </button>
             </td>
         </tr>`;
-        $("#approval-table tbody").append(newRow);
+        $("#pr-detail-table tbody").append(newRow);
+        updateRowNumbers("#pr-detail-table");
+    });
+
+    $("#add-approval").click(function() {
+      let rowNumber = $("#approval-table tbody tr").length + 1;
+      let newRow = `
+      <tr data-index="${rowNumber}">
+        <td>${rowNumber}.</td>
+        <td style="width: 80%">
+          <select class="form-control select2bs4" name="approval${rowNumber}_user_id" id="approval${rowNumber}_user_id" style="width: 100%;" required>
+            <option value="">Select Approval ...</option>
+            {% for approver in approver %}
+            <option value="{{ approver[0] }}" data-entity-id="{{ approver[1] }}">{{ approver[1] }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td style="text-align: center;">
+          <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Approval">
+            <i class="fa fa-trash"></i>
+          </button>
+        </td>
+      </tr>`;
+      $("#approval-table tbody").append(newRow);
+      updateRowNumbers("#approval-table");
+    });
+
+    $(document).on("click", ".delete-row", function() {
+        $(this).closest("tr").remove();
+        updateRowNumbers("#pr-detail-table");
         updateRowNumbers("#approval-table");
     });
+});
+// END PR DETAI JSKRIP
 
-    // Mengupdate nomor baris setelah penghapusan
-    function updateRowNumbers(tableId) {
-        $(`${tableId} tbody tr`).each(function(index) {
-            $(this).find('td:first').text((index + 1) + '.');
-            $(this).find('select').attr('name', 'approval_user_id' + (index + 1));
-            $(this).find('select').attr('id', 'approval_user_id' + (index + 1));
-        });
-    }
-
-    // Menghapus baris dan memperbarui nomor baris
-    // $(document).on('click', '.delete-row', function() {
-    //     $(this).closest('tr').remove();
-    //     updateRowNumbers("#approval-table");
-    // });
-
-      $("#add-upload").click(function() {
-        const rowNumber = $("#upload-table tbody tr").length + 1;
-        const newRow = `
-        <tr>
-          <td>${rowNumber}.</td>
-          <td style="width: 80%">
-            <input type="file" name="files[]" multiple onchange="previewFiles(this)">
-          </td>
-          <td>
-            <div class="preview" style="width: 150px; text-align: center;"></div>
-          </td>
-          <td style="text-align: center;">
-            <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Upload">
-              <i class="fa fa-trash"></i>
-            </button>
-          </td>
-        </tr>`;
-        $("#upload-table tbody").append(newRow);
-        updateRowNumbers("#upload-table");
-      });
-
-    // DELETE ROW FOR DETAIL, APPROVAL, UPLOAD
-    $(document).on("click", ".delete-row", function() {
-      $(this).closest("tr").remove();
-      updateRowNumbers("#pr-detail-table");
-      updateRowNumbers("#approval-table");
-      updateRowNumbers("#upload-table");
-    });
-
-    // Preview upload documents
-    // $(document).on('change', 'input[type="file"]', function() {
-    //   const fileInput = $(this)[0];
-    //   const fileName = fileInput.files[0].name;
-    //   const fileReader = new FileReader();
-    //   fileReader.onload = function(e) {
-    //     const fileURL = e.target.result;
-    //     const previewHTML = `
-    //       <div class="file-preview">
-    //         <p>${fileName}</p>
-    //         <img src="${fileURL}" alt="File Preview" class="img-fluid" style="max-height: 100px;">
-    //       </div>`;
-    //     $(fileInput).closest('td').append(previewHTML);
-    //   };
-    //   fileReader.readAsDataURL(fileInput.files[0]);
-    // });
-
-    // $(document).on("click", ".delete-row", function() {
-    //   $(this).closest("tr").remove();
-    //   updateRowNumbers("#pr-detail-table");
-    //   updateRowNumbers("#approval-table");
-    //   updateRowNumbers("#upload-table");
-    // });
-
-    function updatePRNumber() {
-      const entity = $('#entity').val();
-      const department = $('#department').val();
-      if (entity && department) {
-        $.ajax({
-          url: '/generate_pr',
-          method: 'POST',
-          contentType: 'application/json',
-          data: JSON.stringify({ entity: entity, department: department }),
-          success: function(response) {
-            $('#no_pr').val(response.pr_number);
-          }
-        });
-      }
-    }
-
-    $('#entity, #department').change(updatePRNumber);
-  });
 </script>
 
 <script>
