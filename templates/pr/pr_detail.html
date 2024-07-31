@@ -336,8 +336,9 @@
             <div class="col-12">
               <!-- <a href="invoice-print.html" rel="noopener" target="_blank" class="btn btn-default"><i class="fas fa-print"></i> Print</a> -->
               <a href="{{ url_for('pr.pr_list') }}" class="btn btn-default float-right" title="Detail">Back to list</a>
-              <button type="button" class="btn btn-danger float-right" style="margin-right: 5px;">
+                <a href="{{ url_for('pr.pr_generate_pdf', no_pr=pr_header[0][0]) }}" class="btn btn-danger float-right" style="margin-right: 5px;" title="PDF" target="_blank">
                   <i class="fa fa-file-pdf" aria-hidden="true"></i> Generate PDF
+                </a>
               </button>
             </div>
           </div>

@@ -1,4 +1,4 @@
-from flask import Blueprint, redirect, render_template, request, session, url_for, flash, jsonify, current_app
+from flask import Blueprint, redirect, render_template, request, session, url_for, flash, jsonify, current_app, send_file
 import os
 from werkzeug.security import check_password_hash, generate_password_hash
 from modules.time import convert_time_to_wib
@@ -61,8 +61,7 @@ def pr_list():
             e.entity_name,
             ph.total_budget_approved,
             ph.remarks,
-            ph.created_at,
-            pa.created_at AS approval_date
+            ph.created_at
         FROM pr_header ph 
         LEFT JOIN pr_detail pd ON ph.no_pr = pd.no_pr 
         LEFT JOIN pr_approval pa ON ph.no_pr = pa.no_pr 
@@ -84,155 +83,6 @@ def pr_list():
     
     return render_template('pr/pr_list.html', data=data)
 
-# ====================================================================================================================================
-
-
-# ====================================================================================================================================
-# PR GENERATE PDF TEMP
-# ====================================================================================================================================
-@pr_blueprint.route('/generate_pdf', methods=['POST'])
-def generate_pdf():
-    no_pr = request.form.get('no_pr')
-    from app import mysql
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT * FROM purchase_requisition WHERE no_pr = %s", (no_pr,))
-    pr = cur.fetchone()
-    cur.close()
-
-    if not pr:
-        return "PR not found", 404
-
-    # Parse dates
-    created_at = pr[17] if pr[17] else None
-    if isinstance(created_at, str):
-        created_at = datetime.datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')
-    due_date = pr[10] if pr[10] else None
-    if isinstance(due_date, str):
-        due_date = datetime.datetime.strptime(due_date, '%Y-%m-%d')
-
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4)
-    elements = []
-    styles = getSampleStyleSheet()
-
-    # Custom styles
-    centered_style = ParagraphStyle(name='centered', alignment=TA_CENTER, fontSize=12, fontName='Helvetica')
-    title_style = ParagraphStyle(name='title', alignment=TA_CENTER, fontSize=20, fontName='Helvetica-Bold')
-    table_content_style = ParagraphStyle(name='table_content', alignment=TA_CENTER, fontSize=11)
-    table_content_style_left = ParagraphStyle(name='table_content_left', alignment=TA_LEFT, fontSize=11)
-    table_header_style = ParagraphStyle(name='table_header', alignment=TA_CENTER, fontSize=11, fontName='Helvetica-Bold')
-    footer_style = ParagraphStyle(name='footer', fontSize=11, fontName='Helvetica-Bold')
-    name_footer_style = ParagraphStyle(name='footer', fontSize=11, fontName='Helvetica-Bold',  alignment=TA_CENTER)
-    detail_key_style = ParagraphStyle(name='detail_key', fontSize=11, fontName='Helvetica-Bold')
-    detail_value_style = ParagraphStyle(name='detail_value', fontSize=11)
-
-    # Add logo
-    # logo_path = 'unnamed.png'  # Update this with the correct path to your logo
-    # logo = Image(logo_path, 0.7*inch, 0.7*inch)  # Adjust width and height as needed
-    # logo.hAlign = 'LEFT'  # Align the logo to the left
-    # elements.append(logo)
-    # elements.append(Spacer(1, 12))
-    # elements.append(Spacer(1, 12))
-
-    # Title
-    title = Paragraph('Purchase Requisition (PR)', title_style)
-    elements.append(title)
-    elements.append(Spacer(1, 15))
-
-    # PR Number
-    pr_number = Paragraph(f'(Form Permintaan Barang / Jasa)', centered_style)
-    elements.append(pr_number)
-    elements.append(Spacer(1, 11))
-    pr_number = Paragraph(f'No. PR: {pr[1]}', centered_style)
-    elements.append(pr_number)
-    elements.append(Spacer(1, 11))
-
-    # Details
-    detail_data = [
-        [Paragraph('', detail_key_style), Paragraph('', footer_style)],
-        [Paragraph('Tanggal Permintaan', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'{created_at.strftime("%d %B %Y") if created_at else "N/A"}', detail_value_style)],
-        [Paragraph('User / Requester', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'{pr[2]}', detail_value_style)],
-        [Paragraph('Nama Project', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'{pr[3]}', detail_value_style)],
-        [Paragraph('Sumber Budget / Entyty', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'{pr[4]}', detail_value_style)],
-        [Paragraph('Total Budget Approved', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'Rp. {pr[5]:,.2f} (PPN Exclude)', detail_value_style)],
-        [Paragraph('', detail_key_style), Paragraph('', footer_style)]
-    ]
-
-    table_detail = Table(detail_data, colWidths=[3.9*inch, 0.2*inch, 2.8*inch])
-    table_detail.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.white),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-        ('GRID', (0, 0), (-1, -1), 1, colors.white),
-    ]))
-    elements.append(table_detail)
-    elements.append(Spacer(1, 12))
-
-    # Table
-    # item_description = Paragraph(pr[7], ParagraphStyle(name='item_description', wordWrap='CJK', alignment=TA_LEFT, fontSize=11))
-    item_description = Paragraph(pr[7], ParagraphStyle(name='item_description', alignment=TA_LEFT, fontSize=11, wordWrap='CJK'))
-
-
-    table_data = [
-        [Paragraph('No', table_header_style), Paragraph('Nama Barang/Jasa', table_header_style), 
-         Paragraph('Spesifikasi Barang/Jasa', table_header_style), Paragraph('QTY', table_header_style), 
-         Paragraph('Tanggal dibutuhkan', table_header_style)],
-        [Paragraph('1', table_content_style), Paragraph(pr[6], table_content_style), item_description, 
-         Paragraph(str(pr[8]), table_content_style), 
-         Paragraph(due_date.strftime('%d %b %Y') if due_date else 'N/A', table_content_style)]
-    ]
-
-    table = Table(table_data, colWidths=[0.5*inch, 1.5*inch, 3*inch, 0.5*inch, 1.5*inch])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.white),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # Align content to the top
-    ]))
-    elements.append(table)
-    elements.append(Spacer(1, 12))
-
-    # Footer with digital signature
-    tanda_tangan_path = 'ttn.png'  # Update with the path to your digital signature image
-    tanda_tangan = Image(tanda_tangan_path, width=1.1*inch, height=0.60*inch)
-    table_footer_data = [
-        [Paragraph('', footer_style), Paragraph('', footer_style)],
-        [Paragraph('Dibuat Oleh', name_footer_style), Paragraph('', name_footer_style), Paragraph('      Disetujui Oleh', name_footer_style)],
-        [tanda_tangan,tanda_tangan,tanda_tangan, Paragraph('', footer_style)],
-        [Paragraph(f'({pr[11]})', name_footer_style), Paragraph(f'({pr[12]})', name_footer_style), Paragraph(f'({pr[13]})', name_footer_style), Paragraph(f'({pr[14]})', name_footer_style), Paragraph(f'({pr[15]})', name_footer_style)]
-    ]
-    
-
-    # table_footer_data = [
-    #     [Paragraph('Dibuat Oleh', footer_style), tanda_tangan, Paragraph('      Disetujui Oleh', footer_style)],
-    #     [Paragraph('', footer_style), Paragraph('', footer_style), Paragraph('', footer_style)],
-    #     [Paragraph(f'({pr[10]})', footer_style), Paragraph(f'({pr[11]})', footer_style), Paragraph(f'({pr[12]})', footer_style), Paragraph(f'({pr[13]})', footer_style), Paragraph(f'({pr[14]})', footer_style)]
-    # ]
-
-    table_footer = Table(table_footer_data, colWidths=[2.1*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1.2*inch])
-    table_footer.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.white),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-        ('GRID', (0, 0), (-1, -1), 1, colors.white),
-    ]))
-    elements.append(table_footer)
-    elements.append(Spacer(1, 12))
-
-    doc.build(elements)
-
-    buffer.seek(0)
-    return send_file(buffer, as_attachment=True, download_name='purchase_requisition.pdf', mimetype='application/pdf')
 # ====================================================================================================================================
 
 
@@ -878,3 +728,257 @@ def pr_edit(no_pr):
 # ====================================================================================================================================
 
 
+# ====================================================================================================================================
+# GENERATE PR TO PDF
+# ====================================================================================================================================
+@pr_blueprint.route('/pr_generate_pdf/<no_pr>', methods=['GET', 'POST'])
+def pr_generate_pdf(no_pr):
+    # no_pr = request.form.get('no_pr')
+    from app import mysql
+
+    cur = mysql.connection.cursor()
+    today = datetime.now().strftime('%Y-%m-%d')
+    # DEFINE ALL TABLE RELATE TO PR
+    # GET PR_HEADER
+    cur.execute('''
+        SELECT DISTINCT 
+            ph.no_pr,
+            DATE(ph.tanggal_permintaan)tanggal_permintaan,
+            ph.requester_id,
+            ph.requester_name,
+            ph.entity_id,
+            ph.nama_project,
+            ph.total_budget_approved,
+            ph.remarks,
+            e.entity,
+            e.entity_name
+        FROM pr_header ph 
+        LEFT JOIN entity e ON ph.entity_id = e.id
+        WHERE ph.no_pr = %s''', (no_pr, ))
+
+    pr_header = cur.fetchone()
+
+    # GET PR_DETAIL
+    cur.execute('''
+        SELECT
+            no_pr,
+            item_no,
+            nama_item,
+            spesifikasi,
+            qty,
+            tanggal
+        FROM pr_detail
+        WHERE no_pr = %s''', (no_pr, ))
+
+    pr_details = cur.fetchall()
+
+    # GET PR_APPROVAL
+    cur.execute("SELECT id, username, email FROM user_accounts WHERE level = 4")
+    approver = cur.fetchall()
+
+    cur.execute('''
+        SELECT 
+            pa.no_pr,
+            pa.approval_no,
+            pa.approval_user_id,
+            ua.username,
+            pa.status,
+            pa.notes
+        FROM pr_approval pa
+        LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id
+        WHERE no_pr = %s
+    ''', (no_pr, ))
+
+    pr_approval = cur.fetchall()
+
+    # GET PR_DOCUMENTS
+    cur.execute('''
+        SELECT 
+            no_pr,
+            doc_name,
+            `path`
+        FROM pr_docs_reference
+        WHERE no_pr = %s
+    ''', (no_pr, ))
+
+    pr_documents = cur.fetchall()
+
+
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # PARSE DATE
+    created_at = pr_header[1] if pr_header[1] else None
+    if isinstance(created_at, str):
+        created_at = datetime.datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')
+
+    # CUSTOM STYLE
+    centered_style = ParagraphStyle(name='centered', alignment=TA_CENTER, fontSize=12, fontName='Helvetica')
+    lefted_style = ParagraphStyle(name='lefted', alignment=TA_LEFT, fontSize=12, fontName='Helvetica')
+    title_style = ParagraphStyle(name='title', alignment=TA_CENTER, fontSize=20, fontName='Helvetica-Bold')
+    table_content_style = ParagraphStyle(name='table_content', alignment=TA_CENTER, fontSize=11)
+    table_content_style_left = ParagraphStyle(name='table_content_left', alignment=TA_LEFT, fontSize=11)
+    table_header_style = ParagraphStyle(name='table_header', alignment=TA_CENTER, fontSize=11, fontName='Helvetica-Bold')
+    footer_style = ParagraphStyle(name='footer', fontSize=11, fontName='Helvetica-Bold')
+    name_footer_style = ParagraphStyle(name='footer', fontSize=11, fontName='Helvetica-Bold',  alignment=TA_CENTER)
+    detail_key_style = ParagraphStyle(name='detail_key', fontSize=11, fontName='Helvetica-Bold')
+    detail_value_style = ParagraphStyle(name='detail_value', fontSize=11)
+
+    # FOR TITLE
+    title = Paragraph('Purchase Requisition (PR)', title_style)
+    elements.append(title)
+    elements.append(Spacer(1, 15))
+
+    # PR NUMBER
+    pr_number = Paragraph(f'(Form Permintaan Barang / Jasa)', centered_style)
+    elements.append(pr_number)
+    elements.append(Spacer(1, 11))
+    pr_number = Paragraph(f'No. PR: {pr_header[0]}', centered_style)
+    elements.append(pr_number)
+    elements.append(Spacer(1, 11))
+
+    # PR HEADER DATA
+    detail_data = [
+        [Paragraph('', detail_key_style), Paragraph('', footer_style)],
+        [Paragraph('Tanggal Permintaan', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'{created_at.strftime("%d %B %Y") if created_at else "N/A"}', detail_value_style)],
+        [Paragraph('User / Requester', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'{pr_header[3]}', detail_value_style)],
+        [Paragraph('Nama Project', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'{pr_header[5]}', detail_value_style)],
+        [Paragraph('Sumber Budget / Entity', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'{pr_header[8]}', detail_value_style)],
+        [Paragraph('Total Budget Approved', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'Rp. {pr_header[6]:,.2f} (PPN Exclude)', detail_value_style)],
+        [Paragraph('', detail_key_style), Paragraph('', footer_style)]
+    ]
+
+    # PR HEADER TABLE LIST OUTPUT
+    table_detail = Table(detail_data, colWidths=[3.9*inch, 0.2*inch, 2.8*inch])
+    table_detail.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.white),
+    ]))
+    elements.append(table_detail)
+    elements.append(Spacer(1, 12))
+
+    # PR DETAIL DATA
+    # item_description = Paragraph(details[3], ParagraphStyle(name='item_description', alignment=TA_LEFT, fontSize=11, wordWrap='CJK'))
+    table_header_style = ParagraphStyle(name='table_header', alignment=1, fontSize=12, fontName='Helvetica-Bold')
+    table_content_style = ParagraphStyle(name='table_content', alignment=1, fontSize=11)
+    item_description_style = ParagraphStyle(name='item_description', alignment=0, fontSize=11, wordWrap='CJK')
+
+    # PR DETAIL DATA
+    table_data = [[ 
+          Paragraph('No', table_header_style), 
+          Paragraph('Nama Barang/Jasa', table_header_style), 
+          Paragraph('Spesifikasi Barang/Jasa', table_header_style), Paragraph('QTY', table_header_style), 
+          Paragraph('Tanggal dibutuhkan', table_header_style) ]]
+
+    for details in pr_details:
+        due_date = details[5] if details[5] else None
+        if isinstance(due_date, str):
+            due_date = datetime.datetime.strptime(due_date, '%Y-%m-%d')
+
+        item_description = Paragraph(details[3], item_description_style)
+
+        table_data.append([
+            Paragraph(str(details[1]), table_content_style),
+            Paragraph(details[2], table_content_style),
+            item_description,
+            Paragraph(str(details[4]), table_content_style),
+            Paragraph(due_date.strftime('%d %b %Y') if due_date else 'N/A', table_content_style)
+        ])
+
+    # PR HEADER TABLE LIST DATA OUTPUT
+    table = Table(table_data, colWidths=[0.5*inch, 1.5*inch, 3*inch, 0.6*inch, 1.5*inch])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lemonchiffon),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # Align content to the top
+    ]))
+    elements.append(table)
+    elements.append(Spacer(1, 1))
+
+    remarks_head = [
+        [Paragraph('', detail_key_style), Paragraph('', footer_style)],
+        [Paragraph('Remarks:', detail_key_style)],
+        [Paragraph('', detail_key_style), Paragraph('', footer_style)]
+    ]
+
+    # PR HEADER TABLE LIST OUTPUT
+    remarks_table = Table(remarks_head, colWidths=[5*inch, 1.8*inch])
+    remarks_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.white),
+    ]))
+    elements.append(remarks_table)
+    elements.append(Spacer(1, 1))
+
+    # REMKARS FILES  
+    lampiran = Paragraph(f'1. Lampirkan gambar jika ada', lefted_style)
+    urgent = Paragraph(f'2. Urgent / penunjukan vendor langsung harus melampirkan Form Waiver', lefted_style)
+    elements.append(lampiran)
+    elements.append(Spacer(1, 12))
+    elements.append(urgent)
+    elements.append(Spacer(1, 30))
+
+    # PR APPROVAL
+    
+    styles = getSampleStyleSheet()
+    # footer_style = styles['Normal']
+    footer_style.alignment = 1  # Center alignment
+
+    # PR APPROVAL
+    table_footer_data = [
+        [Paragraph('Dibuat Oleh', footer_style), Paragraph('      Disetujui Oleh', footer_style)]
+    ]
+
+    # SPACING
+    for x in range(3):
+        table_footer_data.append([Paragraph('', footer_style), Paragraph('', footer_style), Paragraph('', footer_style)])
+
+    # ADD NAMES APPROVAL HORIZONTAL
+    approval_row = [Paragraph(f'({pr_header[3]})', footer_style)]
+    for approval in pr_approval:
+        approval_row.append(Paragraph(f'({approval[3]})', footer_style))
+
+    # MAKESURE REQUIRED NUMBER
+    while len(approval_row) < 3:
+        approval_row.append(Paragraph('', footer_style))
+
+    table_footer_data.append(approval_row)
+
+    table_footer = Table(table_footer_data, colWidths=[2.1 * inch, 2.0 * inch, 2.0 * inch])
+    table_footer.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.white),
+    ]))
+
+    elements.append(table_footer)
+    elements.append(Spacer(1, 12))
+
+    doc.build(elements)
+    doc.setTitle = "PR"
+
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=False, download_name=f'{no_pr}_{today}.pdf', mimetype='application/pdf')
+    # ====================================================================================================================================

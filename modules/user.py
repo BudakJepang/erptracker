@@ -6,7 +6,9 @@ from modules.decorator import login_required, check_access
 from functools import wraps
 
 
+# ====================================================================================================================================
 # LOCK REQUIRED TO LOGIN
+# ====================================================================================================================================
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -18,9 +20,26 @@ def login_required(f):
 
 # BLUEPRINT AUTH VARIABLE
 user_blueprint = Blueprint('user', __name__)
+# ====================================================================================================================================
 
 
+# ====================================================================================================================================
+# GET LIST MENU ON LIST USERS AS JSON RETURN (peruntukan ketika register untuk modal json)
+# ====================================================================================================================================
+@user_blueprint.route('/get_menus', methods=['GET'])
+def get_menus():
+    from app import mysql
+    cursor = mysql.connection.cursor()
+    cursor.execute('SELECT id, menu_name FROM menu')
+    menus = cursor.fetchall()
+    cursor.close()
+    return jsonify(menus) 
+# ====================================================================================================================================
+
+
+# ====================================================================================================================================
 # LIST USER
+# ====================================================================================================================================
 @user_blueprint.route('/user_list')
 @login_required
 # @check_access(menu_id=1)
@@ -32,9 +51,12 @@ def user_list():
 
     cursor.close()
     return render_template('users/user_list.html', users=users)
+# ====================================================================================================================================
 
 
+# ====================================================================================================================================
 # REGISTRATION AND ACCESS USER
+# ====================================================================================================================================
 @user_blueprint.route('/register', methods=('GET', 'POST'))
 @user_blueprint.route('/register/<int:user_id>', methods=('GET', 'POST'))
 @login_required
@@ -117,9 +139,12 @@ def register(user_id=None):
     cursor.close()
 
     return render_template('users/user_add.html', user=user, user_menus=user_menus, user_entities=user_entities, all_menus=all_menus, all_entities=all_entities, all_department=all_department)
+# ====================================================================================================================================
 
 
+# ====================================================================================================================================
 # CHANGE USER PASSWORD AS A USER
+# ====================================================================================================================================
 @user_blueprint.route('/user_change_password/<int:id>', methods=['GET', 'POST'])
 @login_required
 def user_change_password(id):
@@ -170,9 +195,12 @@ def user_change_password(id):
         return redirect(url_for('user.list_users'))
     
     return render_template('users/user_change_password.html', user=user)
+# ====================================================================================================================================
 
 
+# ====================================================================================================================================
 # USER SETTINGS
+# ====================================================================================================================================
 @user_blueprint.route('/user_settings')
 @login_required
 def user_settings():
@@ -184,9 +212,12 @@ def user_settings():
     cursor.close()
     
     return render_template('base.html', user=user)
+# ====================================================================================================================================
 
 
+# ====================================================================================================================================
 # EDIT USER AS USER ADMIN
+# ====================================================================================================================================
 @user_blueprint.route('/user_edit/<int:user_id>', methods=('GET', 'POST'))
 @login_required
 def user_edit(user_id):
@@ -262,9 +293,12 @@ def user_edit(user_id):
     }
     
     return render_template('users/user_edit.html', user=user_data, all_menus=all_menus, current_menus=current_menus)
+# ====================================================================================================================================
 
 
+# ====================================================================================================================================
 # DELETE USER
+# ====================================================================================================================================
 @user_blueprint.route('/delete_user/<int:id>', methods=['POST'])
 @login_required
 def delete_user(id):
@@ -275,14 +309,4 @@ def delete_user(id):
     cursor.close()
     flash('User has been deleted successfully', 'success')
     return redirect(url_for('user.user_list'))
-
-
-# GET LIST MENU ON LIST USERS AS JSON RETURN (peruntukan ketika register untuk modal json)
-@user_blueprint.route('/get_menus', methods=['GET'])
-def get_menus():
-    from app import mysql
-    cursor = mysql.connection.cursor()
-    cursor.execute('SELECT id, menu_name FROM menu')
-    menus = cursor.fetchall()
-    cursor.close()
-    return jsonify(menus) 
+# ====================================================================================================================================
