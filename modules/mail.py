@@ -7,6 +7,7 @@ from email.mime.application import MIMEApplication
 from email.mime.base import MIMEBase
 from email import encoders
 from datetime import datetime, timedelta
+import pytz
 
 # SEND MAIL FOR NEW PR
 def pr_mail(no_pr, email, requestName, approvalName, budget, dueDate, entityName):
@@ -281,6 +282,303 @@ def approval_notification_mail(email, no_pr):
                     </table>
                     <br>
                     <p>Thank You</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    """
+
+    body = MIMEText(html, 'html')
+    msg.attach(body)
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.connect("smtp.gmail.com", 587)
+    server.ehlo()
+    server.starttls()
+    server.ehlo()
+    server.login(mailSender, mailPass)
+    text = msg.as_string()
+    server.sendmail(mailSender, mailRecipient.split(','), text)
+    server.quit()
+    result = "Sent"
+    return result
+
+def alert_mail(no_pr, mail_recipient, nama_project, nama_entity, nama_requester, tanggal_request, budget, due_date, approval_name, today):
+    mail_user = "mohammad.nurohman@byorange.co.id"
+    mail_pass = "hahu fbvj uxls njos"
+
+    due_date = str(due_date)
+    amount = '{:,.2f}'.format(float(budget))
+    mailSender = mail_user
+    mailPass = mail_pass
+    mailRecipient = mail_recipient
+    msg = MIMEMultipart()
+    msg['From'] = mailSender
+    msg['To'] = mailRecipient
+    msg['Subject'] = f"PR Form Notification"
+
+    html = """
+        <html>
+        <head>
+            <style>
+                body {
+                    font-family: "Trebuchet MS", sans-serif;
+                    font-size: 16px;
+                }
+                p {
+                    font-family: "Trebuchet MS", serif;
+                    font-size: 16px;
+                }
+                table td {
+                    font-family: "Lucida Console", Courier, monospace;
+                    font-size: 16px;
+                }
+                .container {
+                    border: 1px solid #000;
+                    padding: 20px;
+                    max-width: 600px;
+                    margin: 0 auto;
+                }
+                .logo {
+                    width: 200px;
+                    display: block;
+                    /* margin: 0 auto; */
+                    padding-bottom: 20px;
+                }
+                .content {
+                    margin-top: 20px;
+                }
+                .line {
+                    border-top: 1px solid #000;
+                    margin-top: 10px;
+                    margin-bottom: 10px;
+                }
+                table {
+                    width: 20%;
+                    border-collapse: collapse;
+                }
+                table td {
+                    padding: 10px 10px;
+                }
+                table td.label {
+                    text-align: left;
+                    font-weight: bold;
+                    width: 0%;
+                }
+                table td.value {
+                    text-align: left;
+                    font-weight: bold;
+                    width: 0%;
+                }
+                th, td {
+                    border-style: none;
+                    font-weight: bold;
+                    background-color: #f8f8f8;
+                    text-align: center;
+                }
+                .table2 td {
+                    padding: 30px 10px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <img src="./entity_logo/oid.png" alt="Logo" class="logo">
+                <span style="float: right; font-size: 17px;">Date: """+today+"""</span>
+                <br>
+                <div class="content">
+                    <p>Dear Mr/Mrs.<strong> """+approval_name+"""</strong>,</p>
+                    <p style="padding-bottom: 12px;">We would like to remind you that the following PR Number requires your approval, the PR details are as follows. Please approve it before the due date passes:</p>
+                    <!-- <br> -->
+                    <hr class="line">
+                    <table class="table" style="width:100%;">
+                        <tr>
+                            <td style="text-align: left;">Nomor PR</td>
+                            <td>:</td>
+                            <td style="text-align: left;">"""+no_pr+"""</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;">Project Name</td>
+                            <td>:</td>
+                            <td style="text-align: left;">"""+nama_project+"""</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;">Entity Name</td>
+                            <td>:</td>
+                            <td style="text-align: left;">"""+nama_entity+"""</td>
+                        </tr>
+                            <td style="text-align: left;">Budget Approved</td>
+                            <td>:</td>
+                            <td style="text-align: left;">IDR """+amount+"""</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;">Due Date</td>
+                            <td>:</td>
+                            <td style="text-align: left;">"""+due_date+"""</td>
+                        </tr>
+                    </table>
+                    <hr class="line">
+                    <br>
+                    <table class="table2" style="width:100%">
+                        <tr>
+                            <td>Please follow this link below
+                            <br>
+                            <br> 
+                            <a href="http://10.0.13.247:5000/pr_detail_page/"""+no_pr+""""">click here</a>
+                        </tr>
+                    </table>
+                    <br>
+                    <p>Best Regards,</p>
+                    <p>"""+nama_requester+"""</p>
+                    <p>Thank you</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    """
+
+    body = MIMEText(html, 'html')
+    msg.attach(body)
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.connect("smtp.gmail.com", 587)
+    server.ehlo()
+    server.starttls()
+    server.ehlo()
+    server.login(mailSender, mailPass)
+    text = msg.as_string()
+    server.sendmail(mailSender, mailRecipient.split(','), text)
+    server.quit()
+    result = "Sent"
+    return result
+
+
+def pr_alert_mail(no_pr, mail_recipient):
+    mail_user = "mohammad.nurohman@byorange.co.id"
+    mail_pass = "hahu fbvj uxls njos"
+
+    # due_date = str(due_date)
+    # amount = '{:,.2f}'.format(float(budget))
+    mailSender = mail_user
+    mailPass = mail_pass
+    mailRecipient = mail_recipient
+    msg = MIMEMultipart()
+    msg['From'] = mailSender
+    msg['To'] = mailRecipient
+    msg['Subject'] = f"PR Form Notification"
+
+    html = """
+        <html>
+        <head>
+            <style>
+                body {
+                    font-family: "Trebuchet MS", sans-serif;
+                    font-size: 16px;
+                }
+                p {
+                    font-family: "Trebuchet MS", serif;
+                    font-size: 16px;
+                }
+                table td {
+                    font-family: "Lucida Console", Courier, monospace;
+                    font-size: 16px;
+                }
+                .container {
+                    border: 1px solid #000;
+                    padding: 20px;
+                    max-width: 600px;
+                    margin: 0 auto;
+                }
+                .logo {
+                    width: 200px;
+                    display: block;
+                    /* margin: 0 auto; */
+                    padding-bottom: 20px;
+                }
+                .content {
+                    margin-top: 20px;
+                }
+                .line {
+                    border-top: 1px solid #000;
+                    margin-top: 10px;
+                    margin-bottom: 10px;
+                }
+                table {
+                    width: 20%;
+                    border-collapse: collapse;
+                }
+                table td {
+                    padding: 10px 10px;
+                }
+                table td.label {
+                    text-align: left;
+                    font-weight: bold;
+                    width: 0%;
+                }
+                table td.value {
+                    text-align: left;
+                    font-weight: bold;
+                    width: 0%;
+                }
+                th, td {
+                    border-style: none;
+                    font-weight: bold;
+                    background-color: #f8f8f8;
+                    text-align: center;
+                }
+                .table2 td {
+                    padding: 30px 10px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <img src="./entity_logo/oid.png" alt="Logo" class="logo">
+                <span style="float: right; font-size: 17px;">Date: """+no_pr+"""</span>
+                <br>
+                <div class="content">
+                    <p>Dear Mr/Mrs.<strong> """+no_pr+"""</strong>,</p>
+                    <p style="padding-bottom: 12px;">We would like to remind you that the following PR Number requires your approval, the PR details are as follows. Please approve it before the due date passes:</p>
+                    <!-- <br> -->
+                    <hr class="line">
+                    <table class="table" style="width:100%;">
+                        <tr>
+                            <td style="text-align: left;">Nomor PR</td>
+                            <td>:</td>
+                            <td style="text-align: left;">"""+no_pr+"""</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;">Project Name</td>
+                            <td>:</td>
+                            <td style="text-align: left;">"""+no_pr+"""</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;">Entity Name</td>
+                            <td>:</td>
+                            <td style="text-align: left;">"""+no_pr+"""</td>
+                        </tr>
+                            <td style="text-align: left;">Budget Approved</td>
+                            <td>:</td>
+                            <td style="text-align: left;">IDR """+no_pr+"""</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;">Due Date</td>
+                            <td>:</td>
+                            <td style="text-align: left;">"""+no_pr+"""</td>
+                        </tr>
+                    </table>
+                    <hr class="line">
+                    <br>
+                    <table class="table2" style="width:100%">
+                        <tr>
+                            <td>Please follow this link below
+                            <br>
+                            <br> 
+                            <a href="http://10.0.13.247:5000/pr_detail_page/"""+no_pr+""""">click here</a>
+                        </tr>
+                    </table>
+                    <br>
+                    <p>Best Regards,</p>
+                    <p>""""""</p>
+                    <p>Thank you</p>
                 </div>
             </div>
         </body>

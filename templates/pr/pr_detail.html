@@ -51,8 +51,9 @@
             <div class="row" style="padding-top: 30px;">
               <div class="col-12">
                 <h4>
-                  <img src="{{ url_for('static', filename='entity_logo/unnamed.png') }}" height="60" width="60"> Purchase Requisition, (PR).
-                  <small class="float-right">{{ pr_header[0][9] }}</small>
+                  <large> Purchase Requisition, (PR)</large>
+                  <!-- <img src="{{ url_for('static', filename='entity_logo/unnamed.png') }}" height="60" width="60"> Purchase Requisition, (PR). -->
+                  <large class="float-right">{{ pr_header[0][9] }}</large>
                 </h4>
               </div>
             </div>
@@ -316,9 +317,9 @@
                                           </td>
                                           <td style="width: 30%;">{{approval[4]}}</td>
                                           <td style="text-align: left; width: 25%; font-weight: bold;">
-                                              <a href="{{ url_for('pr.pr_temp_submit') }}" class="btn btn-app bg-default" title="add pr">
-                                                  <i class="fa fa-envelope" aria-hidden="true"></i> Send Mail
-                                              </a>
+                                            <a href="{{ url_for('pr.pr_send_mail_manual', approval_id=approval[1], no_pr=pr_header[0][0]) }}" class="btn btn-app bg-default" title="add pr">
+                                              <i class="fa fa-envelope" aria-hidden="true"></i> Send Mail
+                                            </a>                                          
                                           </td>
                                       </tr>
                                   {% endfor %}
@@ -335,6 +336,11 @@
           <div class="row no-print" style="padding-top: 50px; padding-bottom: 50px">
             <div class="col-12">
               <!-- <a href="invoice-print.html" rel="noopener" target="_blank" class="btn btn-default"><i class="fas fa-print"></i> Print</a> -->
+              <!--<td style="text-align: left; width: 25%; font-weight: bold;">
+                <a href="{{ url_for('pr.test_mail', no_pr=pr_header[0][0]) }}" class="btn btn-app bg-default" title="add pr">
+                  <i class="fa fa-envelope" aria-hidden="true"></i> test Mail
+                </a>                                          
+              </td>-->
               <a href="{{ url_for('pr.pr_list') }}" class="btn btn-default float-right" title="Detail">Back to list</a>
                 <a href="{{ url_for('pr.pr_generate_pdf', no_pr=pr_header[0][0]) }}" class="btn btn-danger float-right" style="margin-right: 5px;" title="PDF" target="_blank">
                   <i class="fa fa-file-pdf" aria-hidden="true"></i> Generate PDF

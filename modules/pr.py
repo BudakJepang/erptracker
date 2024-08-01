@@ -15,7 +15,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
 from datetime import datetime
 from flask_mysqldb import MySQL, MySQLdb
 from werkzeug.utils import secure_filename
-from modules.mail import pr_mail, approval_notification_mail
+from modules.mail import pr_mail, approval_notification_mail, alert_mail, pr_alert_mail
 
 
 
@@ -293,6 +293,26 @@ def pr_temp_submit():
         # pr_mail(no_pr, entity, department, nama_project, tanggal_permintaan, total_budget_approved, tanggal, approval2_user_id)
         flash('New PR has been added', 'success')
 
+        cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor) #PAKE DICT 
+        query_mail = '''
+        SELECT 
+            no_pr,
+            approval_user_id,
+            ua.username,
+            ua.email 
+        FROM pr_approval pa 
+        LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
+        WHERE no_pr = %s
+        '''
+        cur.execute(query_mail, [no_pr])
+        data_email = cur.fetchall()
+        cur.close()
+        
+        emails = [row['email'] for row in data_email if row['email']]
+        email_list = ', '.join(emails)
+        pr_alert_mail(no_pr, email_list)
+        cur.close()
+
         return redirect(url_for('pr.pr_list'))
     return render_template('pr/pr_temp.html', pr_number=pr_number, entities=entities, departments=departments, approver=approver)
 # ==========================================================================================================================================
@@ -324,7 +344,7 @@ def pr_detail_page(no_pr):
     query = """
             SELECT DISTINCT 
                 ph.no_pr,
-                ph.tanggal_permintaan,
+                DATE(ph.tanggal_permintaan)tanggal_permintaan,
                 ph.requester_id,
                 ph.requester_name,
                 ph.entity_id,
@@ -369,6 +389,64 @@ def pr_detail_page(no_pr):
     return render_template('pr/pr_detail.html', pr_header=pr_header, pr_detail=pr_detail, pr_approval=pr_approval, current_user_id=current_user_id)
 # ====================================================================================================================================
 
+# ====================================================================================================================================
+# PT DETAIL MANUAL SEND MAIL
+# ====================================================================================================================================
+@pr_blueprint.route('/pr_send_mail_manual/<approval_id>/<no_pr>', methods=['GET', 'POST'])
+def pr_send_mail_manual(approval_id, no_pr):
+    from app import mysql
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    
+    query = """
+        SELECT DISTINCT 
+            ph.no_pr,
+            DATE(ph.tanggal_permintaan) AS tanggal_permintaan,
+            ph.requester_id,
+            ph.requester_name,
+            ph.entity_id,
+            ph.nama_project,
+            ph.total_budget_approved,
+            ph.remarks,
+            e.entity,
+            e.entity_name,
+            pa.approval_user_id,
+            ua.email,
+            ua.username,
+            pd.tanggal,
+            SUM(pd.qty)qty
+        FROM pr_header ph 
+        LEFT JOIN entity e ON ph.entity_id = e.id
+        LEFT JOIN pr_detail pd ON ph.no_pr = pd.no_pr 
+        LEFT JOIN pr_approval pa ON ph.no_pr = pa.no_pr 
+        LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id
+        WHERE ph.no_pr = %s
+        AND pa.approval_user_id = %s
+        GROUP BY 1,2,3,4,5,6,7,8,9,10,11,12
+    """
+    cur.execute(query, [no_pr, approval_id])
+    data_email = cur.fetchone()
+
+    
+    today = datetime.now().strftime('%d/%b/%Y %H:%M:%S')
+    nama_project = data_email['nama_project']
+    nama_entity = data_email['entity_name']
+    nama_requester = data_email['requester_name']
+    budget = data_email['total_budget_approved']
+    tanggal_request = data_email['tanggal_permintaan']
+    mail_recipient = data_email['email']
+    due_date = data_email['tanggal']
+    approval_name = data_email['username']
+
+    try:
+        alert_mail(no_pr, mail_recipient, nama_project, nama_entity, nama_requester, tanggal_request, budget, due_date, approval_name, today)
+        flash(f'Mail has been sent to {mail_recipient}', 'success')
+
+    except Exception as e:
+        print(f"Error :{e}")
+        flash(f'Email not sent {e}', 'warning')
+
+    return redirect(url_for('pr.pr_list')) 
+    # return f"test kirim ke email: {due_date} approval_name: {approval_name} approval_mail: {mail_recipient}"
 
 
 # ====================================================================================================================================
@@ -378,7 +456,7 @@ def pr_detail_page(no_pr):
 # MAIL APPROVAL ______________________________________________________________________________________________________________________
 def send_sequence_mail_pr(no_pr):
     from app import mysql
-    cur = mysql.connection.cursor()
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor) #PAKE DICT 
 
     query = '''
         SELECT DISTINCT
@@ -392,16 +470,14 @@ def send_sequence_mail_pr(no_pr):
         LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
         WHERE pa.status IS NULL
         AND ph.no_pr = %s
-        ORDER BY approval_no ASC
+        ORDER BY approval_no DESC
         LIMIT 1
     '''
     cur.execute(query, [no_pr])
     data = cur.fetchone()
+    email = data['email']
     cur.close()
-    email_list = data['email'].dropna().tolist()
-    for email in email_list:
-        email = email
-    print(f'=============================== INI TUH PRINT EMAIL {email}')
+
     return email
 
 # APPROVED ____________________________________________________________________________________________________________________________
@@ -428,14 +504,9 @@ def pr_approved(no_pr):
         try:
             cur.execute(update_query, (approval_notes, no_pr, approval_user_id))
             mysql.connection.commit()
-            email = 'rohmankpai@gmail.com'
-            requestName = 'Mohammad Nurohman'
-            approvalName = 'David Irwan'
-            entityName = 'PT. ORANGE INOVASI DIGITAL'
-            budget = "2000000"
-            dueDate = '2024-08-01'
-            # print(f'INI PRINT EMAILL CUUYYYY -=========================== {email}')
-            # pr_mail(no_pr, email, requestName, approvalName, budget, dueDate, entityName)
+            mail_next_approval = send_sequence_mail_pr(no_pr)
+            pr_alert_mail(no_pr, mail_next_approval)
+
             flash('PR has been APPROVED successfully!', 'success')
 
         except Exception as e:
@@ -982,3 +1053,29 @@ def pr_generate_pdf(no_pr):
     buffer.seek(0)
     return send_file(buffer, as_attachment=False, download_name=f'{no_pr}_{today}.pdf', mimetype='application/pdf')
     # ====================================================================================================================================
+
+
+# TESTER RESPONSE
+@pr_blueprint.route('/test_mail/<no_pr>')
+def test_mail(no_pr):
+    from app import mysql
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor) #PAKE DICT 
+
+    query_mail = '''
+    SELECT 
+        no_pr,
+        approval_user_id,
+        ua.username,
+        ua.email 
+    FROM pr_approval pa 
+    LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
+    WHERE no_pr = %s
+    '''
+    cur.execute(query_mail, [no_pr])
+    data_email = cur.fetchall()
+    cur.close()
+    
+    emails = [row['email'] for row in data_email if row['email']]
+    email_list = ', '.join(emails)
+    
+    return email_list

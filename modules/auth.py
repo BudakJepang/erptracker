@@ -34,6 +34,7 @@ def login():
             session['id'] = account[0]
             session['username'] = account[1]
             session['level'] = account[4]
+            session['email'] = account[2]
 
             # get filter user as entity
             cursor.execute('''
@@ -55,4 +56,5 @@ def logout():
     session.pop('loggedin', None)
     session.pop('username', None)
     session.pop('level', None)
+    session.pop('email', None)
     return redirect(url_for('auth.login'))
