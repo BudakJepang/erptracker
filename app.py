@@ -28,14 +28,14 @@ def appFlask():
     # app.config['MYSQL_DB'] = 'erp'
 
     # DB HOME_________________________________________________
-    # app.config['MYSQL_HOST'] = '10.1.1.9'
+    # app.config['MYSQL_HOST'] = '10.1.1.6'
     # app.config['MYSQL_USER'] = 'rohman'
     # app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
     # app.config['MYSQL_DB'] = 'playground'
 
     app.config['UPLOAD_FOLDER'] = 'static/uploads'
     app.config['MAX_CONTENT_PATH'] = 16 * 1024 * 1024  # 16 MB max file size
-    app.secret_key = 'testing'
+    app.secret_key = 'prd'
     return app
 
 def mysqlConn(app):
@@ -179,7 +179,7 @@ def index():
 if __name__ == '__main__':
     
     # MY HOME________________________________________
-    # app.run(host='10.1.1.9', port=5000, debug=True)
+    # app.run(host='10.1.1.6', port=5000, debug=True)
     
     # MY MAC__________________________________________
     app.run(host='10.0.13.247', port=5000, debug=True)

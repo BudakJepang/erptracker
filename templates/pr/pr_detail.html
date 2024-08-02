@@ -145,16 +145,18 @@
                     </tr>
                   </thead>
                   <tbody>
+                    {% for documents in pr_docs %}
                     <tr>
                       <td style="width: 1%">1.</td>
                       <td style="width: 50%">
-                        <p>{{ pr_header[0][25] }}</p>
+                        <p>{{ documents[1] }}</p>
                       </td>
                       <td style="text-align: center;">
                         <!-- <link rel="image_src" href="image url" /> -->
-                        <img src="{{ url_for('static', filename='uploads/luffy.jpeg') }}" height="60" width="120">
+                        <a href="{{ url_for('static', filename=documents[2]) }}" target="_blank">Check File</a>
                       </td>
                     </tr>
+                    {% endfor %}
                   </tbody>
                 </table>
               </div>
@@ -341,7 +343,7 @@
                   <i class="fa fa-envelope" aria-hidden="true"></i> test Mail
                 </a>                                          
               </td>-->
-              <a href="{{ url_for('pr.pr_list') }}" class="btn btn-default float-right" title="Detail">Back to list</a>
+              <a href="{{ url_for('pr.pr_list') }}" class="btn btn-default float-right" title="Detail">Back</a>
                 <a href="{{ url_for('pr.pr_generate_pdf', no_pr=pr_header[0][0]) }}" class="btn btn-danger float-right" style="margin-right: 5px;" title="PDF" target="_blank">
                   <i class="fa fa-file-pdf" aria-hidden="true"></i> Generate PDF
                 </a>

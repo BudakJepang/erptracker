@@ -208,23 +208,25 @@
                           </tr>
                         </thead>
                         <tbody>
-                          <tr>
-                            {% for documents in pr_documents %}
-                            <td>1</td>
+                            {% for idx, document in enumerate(pr_documents) %}
+                            <tr>
+                            <td>{{ idx + 1 }}.</td>
                             <td style="width: 80%">
-                              <input type="file" name="files[]" multiple onchange="previewFiles(this)">
+                                <input type="file" name="files[]" data-file-id="{{ document[0] }}" onchange="previewFiles(this)">
                             </td>
                             <td>
-                              <div class="preview" style="width: 150px; text-align: center;">{{ documents[2] }}</div>
+                                <div class="preview" style="width: 150px; text-align: center;">
+                                <a href="{{ url_for('static', filename=document[3]) }}" target="_blank">{{ document[2] }}</a>
+                                </div>
                             </td>
                             <td style="text-align: center;">
-                              <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Upload">
+                                <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Upload" data-file-id="{{ document[0] }}">
                                 <i class="fa fa-trash"></i>
-                              </button>
+                                </button>
                             </td>
-                          </tr>
-                          {% endfor %}
-                        </tbody>
+                            </tr>
+                            {% endfor %}
+                      </tbody>
                       </table>
                     </div>
                   </div>
@@ -316,7 +318,47 @@
         updateRowNumbers("#approval-table");
     });
 });
-// END PR DETAI JSKRIP
+
+$("#add-upload").click(function() {
+  const rowNumber = $("#upload-table tbody tr").length + 1;
+  const newRow = `
+  <tr>
+    <td>${rowNumber}.</td>
+    <td style="width: 80%">
+      <input type="file" name="files[]" multiple onchange="previewFiles(this)">
+    </td>
+    <td>
+      <div class="preview" style="width: 150px; text-align: center;"></div>
+    </td>
+    <td style="text-align: center;">
+      <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Upload">
+        <i class="fa fa-trash"></i>
+      </button>
+    </td>
+  </tr>`;
+  $("#upload-table tbody").append(newRow);
+  updateRowNumbers("#upload-table");
+});
+
+$(document).on("click", ".delete-row", function() {
+  const fileId = $(this).data('file-id');
+  if (fileId) {
+    const deletedFilesInput = $("<input>").attr("type", "hidden").attr("name", "deleted_files[]").val(fileId);
+    $("form").append(deletedFilesInput);
+  }
+  $(this).closest("tr").remove();
+  updateRowNumbers("#upload-table");
+});
+
+$(document).on("change", "input[type='file']", function() {
+  const fileId = $(this).data('file-id');
+  if (fileId) {
+    $(this).attr('name', `existing_files[${fileId}]`);
+  }
+  previewFiles(this);
+});
+
+// END PR DETAIL JSKRIP
 
 </script>
 

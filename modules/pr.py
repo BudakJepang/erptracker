@@ -40,6 +40,7 @@ pr_blueprint = Blueprint('pr', __name__)
 # PR MAIN LIST
 # ====================================================================================================================================
 @pr_blueprint.route('/pr_list')
+@login_required
 def pr_list():
     from app import mysql
     import traceback
@@ -134,7 +135,8 @@ def generate_pr():
     return jsonify({'pr_number': pr_number})
 
 
-# MAIN PR SUBMIT 
+# MAIN PR SUBMIT_________________________________________________________________
+@login_required
 @pr_blueprint.route('/pr_temp_submit', methods=['GET', 'POST'])
 def pr_temp_submit():
     pr_number = None
@@ -279,7 +281,9 @@ def pr_temp_submit():
                 filename = secure_filename(file.filename)
                 upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
                 file.save(upload_path)
-                upload_docs.append((no_pr, filename, upload_path, requester_id, today, requester_id, today))
+                relative_path = os.path.relpath(upload_path, 'static')  # UBAH PATHNYA AGAR TIDAK DITULIS STRING static PADA DATABASE
+                relative_path = relative_path.replace('\\', '/') # RUBAH BACKSLASH MENJADI SLASH KETIKA INSERT KE DATABASE AGAR DAPAT DI VIEW PADA HTML
+                upload_docs.append((no_pr, filename, relative_path, requester_id, today, requester_id, today))
 
         if upload_docs:
             insert_docs_query = '''
@@ -290,27 +294,50 @@ def pr_temp_submit():
             mysql.connection.commit()
         
         cursor.close()
-        # pr_mail(no_pr, entity, department, nama_project, tanggal_permintaan, total_budget_approved, tanggal, approval2_user_id)
         flash('New PR has been added', 'success')
 
-        cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor) #PAKE DICT 
-        query_mail = '''
-        SELECT 
-            no_pr,
-            approval_user_id,
-            ua.username,
-            ua.email 
-        FROM pr_approval pa 
-        LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
-        WHERE no_pr = %s
-        '''
-        cur.execute(query_mail, [no_pr])
-        data_email = cur.fetchall()
-        cur.close()
+
+        # MULTIPLE SENT MAIL________________________________________________________________
+        cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        # query_mail = '''
+        # SELECT 
+        #     no_pr,
+        #     approval_user_id,
+        #     ua.username,
+        #     ua.email 
+        # FROM pr_approval pa 
+        # LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
+        # WHERE no_pr = %s
+        # '''
+        # cur.execute(query_mail, [no_pr])
+        # data_email = cur.fetchall()
+        # cur.close()
         
-        emails = [row['email'] for row in data_email if row['email']]
-        email_list = ', '.join(emails)
-        pr_alert_mail(no_pr, email_list)
+        # emails = [row['email'] for row in data_email if row['email']]
+        # email_list = ', '.join(emails)
+        # pr_alert_mail(no_pr, email_list)
+
+
+        # SINGLE TO FIRST APPROVAL SENT MAIL________________________________________________________________
+        query_single_mail = '''
+            SELECT 
+                no_pr,
+                approval_no,
+                approval_user_id,
+                ua.username,
+                ua.email 
+            FROM pr_approval pa 
+            LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
+            WHERE no_pr = %s
+            ORDER BY 2 ASC
+            LIMIT 1
+        '''
+        cur.execute(query_single_mail, [no_pr])
+        first_approval_mail = cur.fetchone()
+
+        mail_approval_recipient = first_approval_mail['email']
+        pr_alert_mail(no_pr, mail_approval_recipient)
+
         cur.close()
 
         return redirect(url_for('pr.pr_list'))
@@ -333,6 +360,7 @@ import logging
 # PT DETAIL
 # ====================================================================================================================================
 @pr_blueprint.route('/pr_detail_page/<no_pr>', methods=['GET', 'POST'])
+@login_required
 def pr_detail_page(no_pr):
     from app import mysql
     cur = mysql.connection.cursor()
@@ -340,7 +368,7 @@ def pr_detail_page(no_pr):
     # GET USER_ID FROM LOGIN SESSION
     current_user_id = session.get('id', 'system')
 
-    # QUERY LIST FOR PR_HEADER DATA
+    # QUERY LIST FOR PR_HEADER DATA___________________________________________________
     query = """
             SELECT DISTINCT 
                 ph.no_pr,
@@ -363,11 +391,11 @@ def pr_detail_page(no_pr):
     # Log data for debugging
     logging.debug(f"Data fetched for no_pr {no_pr}: {pr_header}")
 
-    # QUERY LIST FOR PR_DETAIL
+    # QUERY LIST FOR PR_DETAIL__________________________________________________________
     cur.execute("SELECT no_pr, item_no, nama_item, spesifikasi, qty, tanggal FROM pr_detail WHERE no_pr = %s", (no_pr,))
     pr_detail = cur.fetchall()
 
-    # QUERY LIST FOR APPROVAL
+    # QUERY LIST FOR APPROVAL___________________________________________________________
     query_approval = """
             SELECT 
                 pa.no_pr,
@@ -384,15 +412,20 @@ def pr_detail_page(no_pr):
     cur.execute(query_approval, [no_pr])
     pr_approval = cur.fetchall()
 
+    # QUERY LIST FOR PR_DOCS_UPLOAD__________________________________________________________
+    cur.execute("SELECT DISTINCT no_pr, doc_name, path FROM pr_docs_reference WHERE no_pr = %s", (no_pr,))
+    pr_docs = cur.fetchall()
+
     cur.close()
 
-    return render_template('pr/pr_detail.html', pr_header=pr_header, pr_detail=pr_detail, pr_approval=pr_approval, current_user_id=current_user_id)
+    return render_template('pr/pr_detail.html', pr_header=pr_header, pr_detail=pr_detail, pr_approval=pr_approval, pr_docs=pr_docs, current_user_id=current_user_id)
 # ====================================================================================================================================
 
 # ====================================================================================================================================
 # PT DETAIL MANUAL SEND MAIL
 # ====================================================================================================================================
 @pr_blueprint.route('/pr_send_mail_manual/<approval_id>/<no_pr>', methods=['GET', 'POST'])
+@login_required
 def pr_send_mail_manual(approval_id, no_pr):
     from app import mysql
     cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
@@ -455,6 +488,7 @@ def pr_send_mail_manual(approval_id, no_pr):
 
 # MAIL APPROVAL ______________________________________________________________________________________________________________________
 def send_sequence_mail_pr(no_pr):
+
     from app import mysql
     cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor) #PAKE DICT 
 
@@ -481,6 +515,7 @@ def send_sequence_mail_pr(no_pr):
     return email
 
 # APPROVED ____________________________________________________________________________________________________________________________
+@login_required
 @pr_blueprint.route('/pr_approved/<no_pr>', methods=['GET', 'POST'])
 def pr_approved(no_pr):
     from app import mysql
@@ -520,6 +555,7 @@ def pr_approved(no_pr):
 
 # REJECTED ___________________________________________________________________________________________________________________________
 @pr_blueprint.route('/pr_rejected/<no_pr>', methods=['GET', 'POST'])
+@login_required
 def pr_rejected(no_pr):
     from app import mysql
     cur = mysql.connection.cursor()
@@ -565,10 +601,12 @@ def pr_rejected(no_pr):
 # PR UDPATE
 # ====================================================================================================================================
 @pr_blueprint.route('/pr_edit/<no_pr>', methods=['GET', 'POST'])
+@login_required
 def pr_edit(no_pr):
     from app import mysql
 
     cur = mysql.connection.cursor()
+    user_id = session.get('id', 'system')
 
     # GET PR_HEADER
     cur.execute('''
@@ -625,6 +663,7 @@ def pr_edit(no_pr):
     # GET PR_DOCUMENTS
     cur.execute('''
         SELECT 
+            id,
             no_pr,
             doc_name,
             `path`
@@ -787,12 +826,58 @@ def pr_edit(no_pr):
         mysql.connection.commit()
                 
         # INSERT NEW UPLOADS________________________________________________________________________________________
+        upload_files = request.files.getlist('files[]')
+        upload_docs = []
+        for i, file in enumerate(upload_files):
+            if file:
+                filename = secure_filename(file.filename)
+                upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                file.save(upload_path)
+                relative_path = os.path.relpath(upload_path, 'static')  # UBAH PATHNYA AGAR TIDAK DITULIS STRING static PADA DATABASE
+                relative_path = relative_path.replace('\\', '/') # RUBAH BACKSLASH MENJADI SLASH KETIKA INSERT KE DATABASE AGAR DAPAT DI VIEW PADA HTML
+                upload_docs.append((no_pr, filename, relative_path, user_id, today, user_id, today))
 
+        if upload_docs:
+            insert_docs_query = '''
+                INSERT INTO pr_docs_reference (no_pr, doc_name, path, created_by, created_at, updated_by, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            '''
+            cur.executemany(insert_docs_query, upload_docs)
+            mysql.connection.commit()
+            
+        # UPDATE UPLOAD FILES
+        existing_files = request.files # LIST ATAU GET FILE YANG DIUPLOAD SEBELUMNYA DAPAT VALUENYA BALIKAN DARI DATABASE YANG ADA DI HTML
+        for file_id, file in existing_files.items():
+            if file and 'existing_files[' in file_id: # CHEKC FILE YANG AKAN DIUNGGAH APAKAH EXISITNG ATAU TIDAK PENANDANYA MENGGUNAKAN 'existing_files['
+                
+                # Dari file_id seperti existing_files[1], kita mengekstrak ID file. lalu pisahin dengan split('[') buat memisahkan string menjadi daftar berdasarkan [, 
+                # kemudian [-1][:-1] mengambil bagian terakhir dari daftar (yaitu 1]) dan menghapus karakter ] dari akhirnya, sehingga kita mendapatkan 1.
+                actual_file_id = file_id.split('[')[-1][:-1]
+                filename = secure_filename(file.filename)
+                upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                file.save(upload_path)
+                relative_path = os.path.relpath(upload_path, 'static') 
+                relative_path = relative_path.replace('\\', '/')
+                update_docs_query = '''
+                    UPDATE pr_docs_reference
+                    SET doc_name = %s, path = %s, updated_by = %s, updated_at = %s
+                    WHERE id = %s
+                '''
+                cur.execute(update_docs_query, (filename, relative_path, user_id, today, actual_file_id))
+                mysql.connection.commit()
+
+        # DELETE UPLOADS FILE FROM DB
+        deleted_files = request.form.getlist('deleted_files[]')
+        if deleted_files:
+            delete_docs_query = '''
+                DELETE FROM pr_docs_reference WHERE id IN (%s)
+            ''' % ', '.join(['%s'] * len(deleted_files))
+            cur.execute(delete_docs_query, tuple(deleted_files))
+            mysql.connection.commit()
 
         cur.close()
         flash('PR updated successfully', 'success')
         return redirect(url_for('pr.pr_list'))
-   
 
     # return render_template('pr/pr_edit.html', pr_header=pr_header, pr_details=pr_details, pr_approvals=pr_approvals, entities=entities, departments=departments, approver=approver)
     return render_template('pr/pr_edit.html', pr_header=pr_header, pr_detail=pr_detail, pr_approval=pr_approval, pr_documents=pr_documents, approver=approver)
@@ -803,6 +888,7 @@ def pr_edit(no_pr):
 # GENERATE PR TO PDF
 # ====================================================================================================================================
 @pr_blueprint.route('/pr_generate_pdf/<no_pr>', methods=['GET', 'POST'])
+@login_required
 def pr_generate_pdf(no_pr):
     # no_pr = request.form.get('no_pr')
     from app import mysql
@@ -854,7 +940,12 @@ def pr_generate_pdf(no_pr):
             pa.approval_user_id,
             ua.username,
             pa.status,
-            pa.notes
+            pa.notes,
+            DATE(pa.created_at)approval_date,
+            CASE 
+                WHEN pa.status = 'APPROVED' THEN ua.sign_path
+                ELSE NULL
+            END sign_path
         FROM pr_approval pa
         LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id
         WHERE no_pr = %s
@@ -1013,24 +1104,42 @@ def pr_generate_pdf(no_pr):
     # footer_style = styles['Normal']
     footer_style.alignment = 1  # Center alignment
 
+
+    # GET DIGITAL SIGNATURE FROM DATABASE
+    signature_path = pr_approval[0][7]
+    signature_image = Image(signature_path, width=50, height=50)
+
+    signature_row = [signature_image]
+
     # PR APPROVAL
     table_footer_data = [
         [Paragraph('Dibuat Oleh', footer_style), Paragraph('      Disetujui Oleh', footer_style)]
     ]
 
     # SPACING
-    for x in range(3):
+    for x in range(1):
         table_footer_data.append([Paragraph('', footer_style), Paragraph('', footer_style), Paragraph('', footer_style)])
 
     # ADD NAMES APPROVAL HORIZONTAL
-    approval_row = [Paragraph(f'({pr_header[3]})', footer_style)]
+    approval_row = [
+        [Paragraph(f'({pr_header[3]})', footer_style)]
+        ]
+
     for approval in pr_approval:
-        approval_row.append(Paragraph(f'({approval[3]})', footer_style))
+        approval_row.append([Paragraph(f'{approval[6]}', footer_style), Paragraph(f'({approval[3]})', footer_style)])
+        signHand = approval[7]
+        if not signHand:
+            signHand = 'static/uploads/white.png'
+
+        signature_row.append(Image(signHand, width=50, height=50)) 
+
 
     # MAKESURE REQUIRED NUMBER
     while len(approval_row) < 3:
-        approval_row.append(Paragraph('', footer_style))
+        approval_row.append([Paragraph('', footer_style)])
+        signature_row.append(Paragraph('', footer_style))
 
+    table_footer_data.append(signature_row)
     table_footer_data.append(approval_row)
 
     table_footer = Table(table_footer_data, colWidths=[2.1 * inch, 2.0 * inch, 2.0 * inch])
