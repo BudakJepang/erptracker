@@ -16,10 +16,10 @@ def appFlask():
     app = Flask(__name__)
 
     # DB CONN MY MAC_________________________________________
-    app.config['MYSQL_HOST'] = '10.0.13.247' 
-    app.config['MYSQL_USER'] = 'rohman'
-    app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
-    app.config['MYSQL_DB'] = 'playground'
+    # app.config['MYSQL_HOST'] = '10.0.13.247' 
+    # app.config['MYSQL_USER'] = 'rohman'
+    # app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
+    # app.config['MYSQL_DB'] = 'playground'
 
     # DB ONPREM_______________________________________________
     # app.config['MYSQL_HOST'] = '10.0.12.53' 
@@ -28,10 +28,10 @@ def appFlask():
     # app.config['MYSQL_DB'] = 'erp'
 
     # DB HOME_________________________________________________
-    # app.config['MYSQL_HOST'] = '10.1.1.6'
-    # app.config['MYSQL_USER'] = 'rohman'
-    # app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
-    # app.config['MYSQL_DB'] = 'playground'
+    app.config['MYSQL_HOST'] = '10.1.1.6'
+    app.config['MYSQL_USER'] = 'rohman'
+    app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
+    app.config['MYSQL_DB'] = 'playground'
 
     app.config['UPLOAD_FOLDER'] = 'static/uploads'
     app.config['MAX_CONTENT_PATH'] = 16 * 1024 * 1024  # 16 MB max file size
@@ -179,10 +179,10 @@ def index():
 if __name__ == '__main__':
     
     # MY HOME________________________________________
-    # app.run(host='10.1.1.6', port=5000, debug=True)
+    app.run(host='10.1.1.6', port=5000, debug=True)
     
     # MY MAC__________________________________________
-    app.run(host='10.0.13.247', port=5000, debug=True)
+    # app.run(host='10.0.13.247', port=5000, debug=True)
 
     # ON PREM_________________________________________
     # app.run(host='10.0.13.53', port=5000, debug=True)

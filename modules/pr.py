@@ -8,13 +8,14 @@ from functools import wraps
 from io import BytesIO
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, KeepInFrame, Frame
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
 from datetime import datetime
 from flask_mysqldb import MySQL, MySQLdb
 from werkzeug.utils import secure_filename
+from PyPDF2 import PdfReader, PdfWriter
 from modules.mail import pr_mail, approval_notification_mail, alert_mail, pr_alert_mail
 
 
@@ -890,11 +891,11 @@ def pr_edit(no_pr):
 @pr_blueprint.route('/pr_generate_pdf/<no_pr>', methods=['GET', 'POST'])
 @login_required
 def pr_generate_pdf(no_pr):
-    # no_pr = request.form.get('no_pr')
     from app import mysql
 
     cur = mysql.connection.cursor()
     today = datetime.now().strftime('%Y-%m-%d')
+    requester_id = session.get('id', 'system')
     # DEFINE ALL TABLE RELATE TO PR
     # GET PR_HEADER
     cur.execute('''
@@ -908,9 +909,10 @@ def pr_generate_pdf(no_pr):
             ph.total_budget_approved,
             ph.remarks,
             e.entity,
-            e.entity_name
+            ua.sign_path 
         FROM pr_header ph 
         LEFT JOIN entity e ON ph.entity_id = e.id
+        LEFT JOIN user_accounts ua ON ph.requester_id = ua.id
         WHERE ph.no_pr = %s''', (no_pr, ))
 
     pr_header = cur.fetchone()
@@ -930,8 +932,8 @@ def pr_generate_pdf(no_pr):
     pr_details = cur.fetchall()
 
     # GET PR_APPROVAL
-    cur.execute("SELECT id, username, email FROM user_accounts WHERE level = 4")
-    approver = cur.fetchall()
+    cur.execute("SELECT sign_path FROM user_accounts WHERE id = %s",(requester_id,))
+    reqester_ttd = cur.fetchall()
 
     cur.execute('''
         SELECT 
@@ -965,8 +967,7 @@ def pr_generate_pdf(no_pr):
 
     pr_documents = cur.fetchall()
 
-
-
+    # MAIN FORM PDF
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4)
     elements = []
@@ -978,16 +979,16 @@ def pr_generate_pdf(no_pr):
         created_at = datetime.datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')
 
     # CUSTOM STYLE
-    centered_style = ParagraphStyle(name='centered', alignment=TA_CENTER, fontSize=12, fontName='Helvetica')
-    lefted_style = ParagraphStyle(name='lefted', alignment=TA_LEFT, fontSize=12, fontName='Helvetica')
+    centered_style = ParagraphStyle(name='centered', alignment=TA_CENTER, fontSize=10, fontName='Helvetica')
+    lefted_style = ParagraphStyle(name='lefted', alignment=TA_LEFT, fontSize=10, fontName='Helvetica')
     title_style = ParagraphStyle(name='title', alignment=TA_CENTER, fontSize=20, fontName='Helvetica-Bold')
-    table_content_style = ParagraphStyle(name='table_content', alignment=TA_CENTER, fontSize=11)
-    table_content_style_left = ParagraphStyle(name='table_content_left', alignment=TA_LEFT, fontSize=11)
-    table_header_style = ParagraphStyle(name='table_header', alignment=TA_CENTER, fontSize=11, fontName='Helvetica-Bold')
-    footer_style = ParagraphStyle(name='footer', fontSize=11, fontName='Helvetica-Bold')
-    name_footer_style = ParagraphStyle(name='footer', fontSize=11, fontName='Helvetica-Bold',  alignment=TA_CENTER)
-    detail_key_style = ParagraphStyle(name='detail_key', fontSize=11, fontName='Helvetica-Bold')
-    detail_value_style = ParagraphStyle(name='detail_value', fontSize=11)
+    table_content_style = ParagraphStyle(name='table_content', alignment=TA_CENTER, fontSize=10)
+    table_content_style_left = ParagraphStyle(name='table_content_left', alignment=TA_LEFT, fontSize=10)
+    table_header_style = ParagraphStyle(name='table_header', alignment=TA_CENTER, fontSize=10, fontName='Helvetica-Bold')
+    footer_style = ParagraphStyle(name='footer', fontSize=10, fontName='Helvetica-Bold')
+    name_footer_style = ParagraphStyle(name='footer', fontSize=10, fontName='Helvetica-Bold',  alignment=TA_CENTER)
+    detail_key_style = ParagraphStyle(name='detail_key', fontSize=10, fontName='Helvetica-Bold')
+    detail_value_style = ParagraphStyle(name='detail_value', fontSize=10)
 
     # FOR TITLE
     title = Paragraph('Purchase Requisition (PR)', title_style)
@@ -1029,9 +1030,9 @@ def pr_generate_pdf(no_pr):
 
     # PR DETAIL DATA
     # item_description = Paragraph(details[3], ParagraphStyle(name='item_description', alignment=TA_LEFT, fontSize=11, wordWrap='CJK'))
-    table_header_style = ParagraphStyle(name='table_header', alignment=1, fontSize=12, fontName='Helvetica-Bold')
-    table_content_style = ParagraphStyle(name='table_content', alignment=1, fontSize=11)
-    item_description_style = ParagraphStyle(name='item_description', alignment=0, fontSize=11, wordWrap='CJK')
+    table_header_style = ParagraphStyle(name='table_header', alignment=1, fontSize=10, fontName='Helvetica-Bold')
+    table_content_style = ParagraphStyle(name='table_content', alignment=1, fontSize=10)
+    item_description_style = ParagraphStyle(name='item_description', alignment=0, fontSize=10, wordWrap='CJK')
 
     # PR DETAIL DATA
     table_data = [[ 
@@ -1076,7 +1077,7 @@ def pr_generate_pdf(no_pr):
         [Paragraph('', detail_key_style), Paragraph('', footer_style)]
     ]
 
-    # PR HEADER TABLE LIST OUTPUT
+    # PR TABLE REMARKS
     remarks_table = Table(remarks_head, colWidths=[5*inch, 1.8*inch])
     remarks_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.white),
@@ -1104,42 +1105,45 @@ def pr_generate_pdf(no_pr):
     # footer_style = styles['Normal']
     footer_style.alignment = 1  # Center alignment
 
+    # GET REQUESTER APPROVAL NULL OR EXIST SIGN
+    requester_sign = pr_header[9] if pr_header[9] else 'static/uploads/white.png'
+    signature_image = Image(requester_sign, width=50, height=50)
 
-    # GET DIGITAL SIGNATURE FROM DATABASE
-    signature_path = pr_approval[0][7]
-    signature_image = Image(signature_path, width=50, height=50)
-
-    signature_row = [signature_image]
-
-    # PR APPROVAL
+    # PR APPROVAL SIGNATURE STRUCTURE
     table_footer_data = [
-        [Paragraph('Dibuat Oleh', footer_style), Paragraph('      Disetujui Oleh', footer_style)]
+        [Paragraph('Dibuat Oleh', footer_style), Paragraph('Disetujui Oleh', footer_style)]
     ]
 
-    # SPACING
+    # SPACING BETWEEN NAME AND SIGNATURE
     for x in range(1):
         table_footer_data.append([Paragraph('', footer_style), Paragraph('', footer_style), Paragraph('', footer_style)])
 
-    # ADD NAMES APPROVAL HORIZONTAL
-    approval_row = [
-        [Paragraph(f'({pr_header[3]})', footer_style)]
-        ]
+    # ADD REQUESTER SIGNATURE AND NAME
+    signature_row = [signature_image]
+    date_row = [Paragraph('', footer_style)]
+    approval_row = [Paragraph(f'({pr_header[3]})', footer_style)]
 
+    # ADD APPROVAL SIGNATURE DATE APPROVED AND NAMES
     for approval in pr_approval:
-        approval_row.append([Paragraph(f'{approval[6]}', footer_style), Paragraph(f'({approval[3]})', footer_style)])
-        signHand = approval[7]
-        if not signHand:
-            signHand = 'static/uploads/white.png'
+        approval_date = str(approval[6]) if str(approval[6]) else ''
+        approval_name = f'({approval[3]})' if approval[3] else ''
+        sign_path = approval[7] if approval[7] else 'static/uploads/white.png'
 
-        signature_row.append(Image(signHand, width=50, height=50)) 
+        # SIGNATURE DATA
+        signature_row.append(Image(sign_path, width=50, height=50))
+        # DATE APPROVED
+        date_row.append(Paragraph(approval_date, footer_style))
+        # APRROVAL NAME DATA
+        approval_row.append(Paragraph(approval_name, footer_style))
 
-
-    # MAKESURE REQUIRED NUMBER
+    # ADD 3 ROWS OR MORE
     while len(approval_row) < 3:
-        approval_row.append([Paragraph('', footer_style)])
+        approval_row.append(Paragraph('', footer_style))
+        date_row.append(Paragraph('', footer_style))
         signature_row.append(Paragraph('', footer_style))
 
     table_footer_data.append(signature_row)
+    table_footer_data.append(date_row)
     table_footer_data.append(approval_row)
 
     table_footer = Table(table_footer_data, colWidths=[2.1 * inch, 2.0 * inch, 2.0 * inch])
@@ -1160,11 +1164,86 @@ def pr_generate_pdf(no_pr):
     doc.setTitle = "PR"
 
     buffer.seek(0)
-    return send_file(buffer, as_attachment=False, download_name=f'{no_pr}_{today}.pdf', mimetype='application/pdf')
-    # ====================================================================================================================================
+
+    # COMBINE PDF FILES REFERENCES__________________________________________________________
+    main_pdf = PdfReader(buffer)
+    pdf_writer = PdfWriter()
+
+    # LIST PATH LOCATION
+    cur.execute('''
+        SELECT path
+        FROM pr_docs_reference pdr 
+        WHERE no_pr = %s
+    ''', (no_pr, ))
+
+    additional_paths = [os.path.join('static', row[0]) for row in cur.fetchall()]
+
+    # ADD ALL PAGES FROM MAIN PDF
+    for page_num in range(len(main_pdf.pages)):
+        pdf_writer.add_page(main_pdf.pages[page_num])
+
+    # CONVERT (JPG, JPEG, PNG) IMG FILES
+    def convert_image_to_pdf(image_path):
+        try:
+            img_buffer = BytesIO()
+            img_doc = SimpleDocTemplate(img_buffer, pagesize=A4)
+            elements = []
+
+            # CREATE IMG OBJECT
+            img = Image(image_path)
+            img_width, img_height = img.wrap(0, 0)
+
+            # SCALE IMG TO A4 PAPER
+            scale = min(A4[0] / img_width, A4[1] / img_height)
+            img.drawWidth = img_width * scale
+            img.drawHeight = img_height * scale
+
+            # ADD SLACE IMG TO ELEMENT LIST
+            elements.append(img)
+            
+            img_doc.build(elements)
+            img_buffer.seek(0)
+            print(f"Converted image {image_path} to PDF successfully.")
+            return img_buffer
+        except Exception as e:
+            print(f"Error converting image to PDF: {e}")
+            return None
+
+    # Add all pages from the additional files
+    for path in additional_paths:
+        print(f"Processing file: {path}")
+        if path.endswith('.pdf'):
+            try:
+                with open(path, "rb") as f:
+                    additional_pdf = PdfReader(f)
+                    for page_num in range(len(additional_pdf.pages)):
+                        pdf_writer.add_page(additional_pdf.pages[page_num])
+                print(f"Added pages from PDF file: {path}")
+            except Exception as e:
+                print(f"Error adding PDF file {path}: {e}")
+        elif path.endswith('.jpg') or path.endswith('.jpeg') or path.endswith('.png'):
+            image_pdf_buffer = convert_image_to_pdf(path)
+            if image_pdf_buffer:
+                image_pdf = PdfReader(image_pdf_buffer)
+                for page_num in range(len(image_pdf.pages)):
+                    pdf_writer.add_page(image_pdf.pages[page_num])
+                print(f"Added pages from image file: {path}")
+            else:
+                print(f"Skipping invalid image file: {path}")
+
+    # Write the combined PDF to a new buffer
+    combined_buffer = BytesIO()
+    pdf_writer.write(combined_buffer)
+    combined_buffer.seek(0)
+
+    print("Combined PDF generated successfully.")
+
+    # return send_file(buffer, as_attachment=False, download_name=f'{no_pr}_{today}.pdf', mimetype='application/pdf')
+    return send_file(combined_buffer, as_attachment=False, download_name=f'{no_pr}_{today}.pdf', mimetype='application/pdf')
+# ========================================================================================================================================
 
 
-# TESTER RESPONSE
+# TESTER RESPONSE ========================================================================================================================
 @pr_blueprint.route('/test_mail/<no_pr>')
 def test_mail(no_pr):
     from app import mysql
@@ -1188,3 +1267,4 @@ def test_mail(no_pr):
     email_list = ', '.join(emails)
     
     return email_list
+# ====================================================================================================================================

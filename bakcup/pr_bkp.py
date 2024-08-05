@@ -886,3 +886,181 @@ new_ids = set(range(1, len(details) + 1))
 to_delete = old_ids - new_ids
 for del_id in to_delete:
 cur.execute("DELETE FROM pr_detail WHERE no_pr = %s AND id = %s", (no_pr, del_id))
+
+
+# REQUESTER AND APPROVAL SIGN LOGIC
+ # GET DIGITAL SIGNATURE FROM DATABASE
+    signature_path = requester_sign
+    signature_image = Image(signature_path, width=50, height=50)
+
+    signature_row = [signature_image]
+
+    # PR APPROVAL
+    table_footer_data = [
+        [Paragraph('Dibuat Oleh', footer_style), Paragraph('      Disetujui Oleh', footer_style)]
+    ]
+
+    # SPACING
+    for x in range(1):
+        table_footer_data.append([Paragraph('', footer_style), Paragraph('', footer_style), Paragraph('', footer_style)])
+
+    # ADD NAMES APPROVAL HORIZONTAL
+    approval_row = [
+        [Paragraph(f'({pr_header[3]})', footer_style)]
+        ]
+
+    for approval in pr_approval:
+        approval_row.append([Paragraph(f'{approval[6]}', footer_style), Paragraph(f'({approval[3]})', footer_style)])
+        signHand = approval[7]
+        if not signHand:
+            signHand = 'static/uploads/white.png'
+
+        signature_row.append(Image(signHand, width=50, height=50)) 
+
+
+    # MAKESURE REQUIRED NUMBER
+    while len(approval_row) < 3:
+        approval_row.append([Paragraph('', footer_style)])
+        signature_row.append(Paragraph('', footer_style))
+
+    table_footer_data.append(signature_row)
+    table_footer_data.append(approval_row)
+
+    table_footer = Table(table_footer_data, colWidths=[2.1 * inch, 2.0 * inch, 2.0 * inch])
+    table_footer.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.white),
+    ]))
+
+    elements.append(table_footer)
+    elements.append(Spacer(1, 12))
+
+ # TESTER MERGE PDF
+    # Read the main document PDF
+    from PyPDF2 import PdfReader, PdfWriter
+    main_pdf = PdfReader(buffer)
+    # Query to get additional file paths
+    cur.execute('''
+        SELECT path
+        FROM pr_docs_reference pdr 
+        WHERE no_pr = %s
+    ''', (no_pr, ))
+
+    # additional_paths = [row[0] for row in cur.fetchall()]
+   # Path to additional files
+    additional_paths = ['uploads/luffy.jpeg']  # Change this to a list of your paths
+
+    # Create a PdfWriter object
+    pdf_writer = PdfWriter()
+
+    # Add all pages from the main PDF
+    for page_num in range(len(main_pdf.pages)):
+        pdf_writer.add_page(main_pdf.pages[page_num])
+
+    # Function to convert JPG/JPEG to PDF
+    def convert_image_to_pdf(image_path):
+        try:
+            img_buffer = BytesIO()
+            img_doc = SimpleDocTemplate(img_buffer, pagesize=A4)
+            elements = []
+
+            # Create an Image object
+            img = Image(image_path)
+            img_width, img_height = img.wrap(0, 0)
+
+            # Calculate scaling to fit the image into A4 size
+            scale = min(A4[0] / img_width, A4[1] / img_height)
+            img.drawWidth = img_width * scale
+            img.drawHeight = img_height * scale
+
+            # Add the scaled image to the elements list
+            elements.append(img)
+            
+            img_doc.build(elements)
+            img_buffer.seek(0)
+            print(f"Converted image {image_path} to PDF successfully.")
+            return img_buffer
+        except Exception as e:
+            print(f"Error converting image to PDF: {e}")
+            return None
+
+    # Add all pages from the additional files
+    for path in additional_paths:
+        print(f"Processing file: {path}")
+        if path.endswith('.pdf'):
+            try:
+                with open(path, "rb") as f:
+                    additional_pdf = PdfReader(f)
+                    for page_num in range(len(additional_pdf.pages)):
+                        pdf_writer.add_page(additional_pdf.pages[page_num])
+                print(f"Added pages from PDF file: {path}")
+            except Exception as e:
+                print(f"Error adding PDF file {path}: {e}")
+        elif path.endswith('.jpg') or path.endswith('.jpeg'):
+            image_pdf_buffer = convert_image_to_pdf(path)
+            if image_pdf_buffer:
+                image_pdf = PdfReader(image_pdf_buffer)
+                for page_num in range(len(image_pdf.pages)):
+                    pdf_writer.add_page(image_pdf.pages[page_num])
+                print(f"Added pages from image file: {path}")
+            else:
+                print(f"Skipping invalid image file: {path}")
+
+    # Write the combined PDF to a new buffer
+    combined_buffer = BytesIO()
+    pdf_writer.write(combined_buffer)
+    combined_buffer.seek(0)
+
+    print("Combined PDF generated successfully.")
+
+# SIGNATURE ROW
+    signature_row = [signature_image]
+    date_row = [Paragraph('', footer_style)]
+    approval_row = [Paragraph(f'({pr_header[3]})', footer_style)]
+
+    # Menambahkan tanda tangan persetujuan, tanggal persetujuan, dan nama
+    for approval in pr_approval:
+        approval_date = str(approval[6]) if approval[6] else ''
+        approval_name = f'({approval[3]})' if approval[3] else ''
+        sign_path = approval[7] if approval[7] else 'static/uploads/white.png'
+
+        # Tanda tangan
+        signature_row.append(Image(sign_path, width=50, height=50))
+        
+        # Tanggal persetujuan
+        date_row.append(Paragraph(approval_date, footer_style))
+        
+        # Nama persetujuan
+        approval_row.append(Paragraph(approval_name, footer_style))
+
+    # Menambahkan baris kosong jika kolom kurang dari 3
+    while len(approval_row) < 3:
+        signature_row.append(Paragraph('', footer_style))
+        date_row.append(Paragraph('', footer_style))
+        approval_row.append(Paragraph('', footer_style))
+
+    # Menambahkan baris tanda tangan, tanggal, dan nama ke dalam data footer tabel
+    table_footer_data.append(signature_row)
+    table_footer_data.append(date_row)
+    table_footer_data.append(approval_row)
+
+    # Membuat tabel footer
+    table_footer = Table(table_footer_data, colWidths=[2.1 * inch, 2.0 * inch, 2.0 * inch])
+    table_footer.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.white),
+    ]))
+
+    # Menambahkan tabel footer ke dalam elemen dokumen
+    elements.append(table_footer)
+    elements.append(Spacer(1, 12))

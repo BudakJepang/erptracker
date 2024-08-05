@@ -145,9 +145,9 @@
                     </tr>
                   </thead>
                   <tbody>
-                    {% for documents in pr_docs %}
+                    {% for num, documents in enumerate(pr_docs) %}
                     <tr>
-                      <td style="width: 1%">1.</td>
+                      <td style="width: 1%">{{ num + 1 }}</td>
                       <td style="width: 50%">
                         <p>{{ documents[1] }}</p>
                       </td>
