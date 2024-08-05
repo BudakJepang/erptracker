@@ -22,16 +22,16 @@ def appFlask():
     # app.config['MYSQL_DB'] = 'playground'
 
     # DB ONPREM_______________________________________________
-    # app.config['MYSQL_HOST'] = '10.0.12.53' 
-    # app.config['MYSQL_USER'] = 'data-tech'
-    # app.config['MYSQL_PASSWORD'] = '!@#Bismill4h'
-    # app.config['MYSQL_DB'] = 'erp'
+    app.config['MYSQL_HOST'] = '10.0.12.53' 
+    app.config['MYSQL_USER'] = 'data-tech'
+    app.config['MYSQL_PASSWORD'] = '!@#Bismill4h'
+    app.config['MYSQL_DB'] = 'erp'
 
     # DB HOME_________________________________________________
-    app.config['MYSQL_HOST'] = '10.1.1.6'
-    app.config['MYSQL_USER'] = 'rohman'
-    app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
-    app.config['MYSQL_DB'] = 'playground'
+    # app.config['MYSQL_HOST'] = '10.1.1.6'
+    # app.config['MYSQL_USER'] = 'rohman'
+    # app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
+    # app.config['MYSQL_DB'] = 'playground'
 
     app.config['UPLOAD_FOLDER'] = 'static/uploads'
     app.config['MAX_CONTENT_PATH'] = 16 * 1024 * 1024  # 16 MB max file size
