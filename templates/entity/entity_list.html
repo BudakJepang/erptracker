@@ -35,7 +35,7 @@
                 <div class="card-header">
                   <h3 class="card-title"></h3>
                   {% if session.level != 4 %}
-                  <a href="{{ url_for('entity.entity_form') }}" class="btn btn-app bg-default" title="Add Entity"><i class="fas fa-edit"></i>Add Entity</a>
+                  <a href="{{ url_for('entity.entity_add') }}" class="btn btn-app bg-default" title="Add Entity"><i class="fas fa-edit"></i>Add Entity</a>
                   {% endif %}
                 </div>
                 <!-- /.card-header -->
@@ -56,10 +56,7 @@
                             <td>{{ data[2] }}</td>
                             <td>{{ data[3] }}</td>
                             <td>
-                              <a href="{{ url_for('entity.entity_form', id=data[0]) }}" class="btn btn-default btn-sm" title="Detail"><i class="fa fa-info-circle" aria-hidden="true"></i></a>
-                              {% if session.level != 4 %}
-                              <a href="{{ url_for('entity.entity_form', id=data[0]) }}" class="btn btn-default btn-sm" title="Edit PR"><i class="fa fa-edit" aria-hidden="true"></i></a>
-                              {% endif %}
+                              <a href="{{ url_for('entity.entity_add', entity_id=data[0]) }}" class="btn btn-default btn-sm" title="Edit PR"><i class="fa fa-edit" aria-hidden="true"></i></a>
                             </td>
                             <!-- PUT ACTION BUTTON HERE-->
                           </tr>

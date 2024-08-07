@@ -23,21 +23,21 @@ from modules.mail import pr_mail, approval_notification_mail, alert_mail, pr_ale
 # ====================================================================================================================================
 # PR UTILITES
 # ====================================================================================================================================
-# def login_required(f):
-#     @wraps(f)
-#     def decorated_function(*args, **kwargs):
-#         if 'loggedin' not in session:
-#             return redirect(url_for('auth.auth'))
-#         return f(*args, **kwargs)
-#     return decorated_function
-
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'loggedin' not in session:
-            return redirect(url_for('auth.auth', next=request.url))
+            return redirect(url_for('auth.auth'))
         return f(*args, **kwargs)
     return decorated_function
+
+# def login_required(f):
+#     @wraps(f)
+#     def decorated_function(*args, **kwargs):
+#         if 'loggedin' not in session:
+#             return redirect(url_for('auth.auth', next=request.url))
+#         return f(*args, **kwargs)
+#     return decorated_function
 
 
 # BLUEPRINT AUTH VARIABLE
@@ -85,13 +85,17 @@ def pr_list():
         '''
         cursor.execute(query, (user_id, user_id, user_id))
         data = cursor.fetchall()
+
+        query_app = "SELECT status FROM pr_approval"
+        cursor.execute(query_app)
+        appr = cursor.fetchone()
     except Exception as e:
         traceback.print_exc()  # Print stack trace for debugging
         return "An error occurred while fetching the PR list."
     finally:
         cursor.close()
     
-    return render_template('pr/pr_list.html', data=data)
+    return render_template('pr/pr_list.html', data=data, appr=appr)
 
 # ====================================================================================================================================
 

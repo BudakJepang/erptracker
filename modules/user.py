@@ -1,5 +1,7 @@
-from flask import Blueprint, redirect, render_template, request, session, url_for, flash, jsonify
+import os
+from flask import Blueprint, redirect, render_template, request, session, url_for, flash, jsonify, current_app
 from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
 from modules.time import convert_time_to_wib
 from datetime import datetime, timedelta, timezone
 from modules.decorator import login_required, check_access
@@ -152,49 +154,66 @@ def user_change_password(id):
     cursor = mysql.connection.cursor()
 
     if request.method == 'POST':
-        user_id = request.form['id_user']
+        user_id = request.form['user_id']
         username = request.form['username']
         email = request.form['email']
         current_password = request.form['current_password']
         new_password = request.form['new_password']
+        signature = request.files.get('signature')
+        signature_filename = None
+        # return f'{signature_filename}'
+        
+        if signature:
+            if signature.filename != '':
+                signature_filename = secure_filename(signature.filename)
+                signature.save(os.path.join(current_app.config['UPLOAD_FOLDER'], signature_filename))
+        
+        # return f"{signature_filename}"
 
-        cursor.execute('SELECT password FROM user_accounts WHERE id=%s', (user_id,))
-        user = cursor.fetchone()
+        # cursor.execute('SELECT password FROM user_accounts WHERE id=%s', (user_id,))
+        # user = cursor.fetchone()
 
-        if user and check_password_hash(user[0], current_password):
-            # checking password if current password is correct
-            if new_password:
-                new_password_hashed = generate_password_hash(new_password)
-                cursor.execute('''
-                    UPDATE user_accounts 
-                    SET username=%s, email=%s, password=%s, updated_at=%s 
-                    WHERE id=%s
-                ''', (username, email, new_password_hashed, datetime.now(), user_id))
-            else:
-                cursor.execute('''
-                    UPDATE user_accounts 
-                    SET username=%s, email=%s, updated_at=%s 
-                    WHERE id=%s
-                ''', (username, email, datetime.now(), user_id))
-            
-            mysql.connection.commit()
-            flash('User updated successfully', 'success')
-            return redirect(url_for('user.user_list'))
-        else:
-            # Current password is incorrect
-            flash('Current password is incorrect', 'danger')
-            
-        return redirect(url_for('user.user_change_password', id=user_id))
-    
+        # if user and check_password_hash(user[0], current_password):
+        #     if new_password:
+        #         new_password_hashed = generate_password_hash(new_password)
+        #         cursor.execute('''
+        #             UPDATE user_accounts 
+        #             SET username=%s, email=%s, password=%s, updated_at=%s, sign_path=%s 
+        #             WHERE id=%s
+        #         ''', (username, email, new_password_hashed, datetime.now(), signature_filename, user_id))
+        #     else:
+        #         cursor.execute('''
+        #             UPDATE user_accounts 
+        #             SET username=%s, email=%s, updated_at=%s, sign_path=%s
+        #             WHERE id=%s
+        #         ''', (username, email, datetime.now(), signature_filename, user_id))
+
+        #     # if signature_filename:
+        #     #     cursor.execute('''
+        #     #         INSERT INTO user_accounts (user_id, sign_path, updated_at)
+        #     #         VALUES (%s, %s, %s)
+        #     #         ON DUPLICATE KEY UPDATE sign_path=%s, updated_at=%s
+        #     #     ''', (user_id, signature_filename, datetime.now(), signature_filename, datetime.now()))
+
+        #     mysql.connection.commit()
+        #     flash('User updated successfully', 'success')
+        #     return redirect(url_for('user.user_list'))
+        # else:
+        #     flash('Current password is incorrect', 'warning')
+
+        # return redirect(url_for('user.user_change_password', id=user_id))
+
     cursor.execute('SELECT id, username, email, level FROM user_accounts WHERE id=%s', (id,))
     user = cursor.fetchone()
     cursor.close()
 
     if user is None:
-        flash('User not found', 'danger')
+        flash('User not found', 'warning')
         return redirect(url_for('user.list_users'))
-    
+
+    # return render_template('users/user_change_password.html', user=user)
     return render_template('users/user_change_password.html', user=user)
+    # return f"{signature}"
 # ====================================================================================================================================
 
 

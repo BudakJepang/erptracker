@@ -46,10 +46,10 @@ def login():
             entities = cursor.fetchall()
             session['entities'] = [{'entity_id': entity[0], 'entity_name': entity[1]} for entity in entities]
             cursor.close()
-            next_url = request.args.get('next')
-            return redirect(next_url or url_for('index'))
+            # next_url = request.args.get('next')
+            # return redirect(next_url or url_for('index'))
             # return next_url
-            # return redirect(url_for('index'))
+            return redirect(url_for('index'))
         
     return render_template('auth/login.html')
 

@@ -35,17 +35,17 @@
           </div>
           <!-- /.card-header -->
           <!-- form start -->
-          <form action="{{ url_for('user.register', user_id=user[0] if user else None) }}" method="post">
+          <form action="{{ url_for('entity.entity_add', entity_id=entity[0] if entity else None) }}" method="POST">
             <div class="card-body">
               <div class="row">
                 <div class="col-md-3">
                   <div class="form-group">
                     <label for="entity_code">Entity Code</label>
-                    <input type="text" class="form-control" id="entity_code" name="entity_code" value="{{ user[1] if user else '' }}" placeholder="Define Entity Code" autocomplete="off" required>
+                    <input type="text" class="form-control" id="entity_code" name="entity_code" value="{{ entity[1] if entity else '' }}" placeholder="Define Entity Code" required>
                   </div>
                   <div class="form-group">
                     <label for="entity_name">Entity Name</label>
-                    <input type="email" class="form-control" id="entity_code" name="entity_name" value="{{ user[2] if user else '' }}" placeholder="Masukkan Nama Entity" autocomplete="off" required>
+                    <input type="text" class="form-control" id="entity_name" name="entity_name" value="{{ entity[2] if entity else '' }}" placeholder="Masukkan Nama Entity" required>
                   </div>
                   <div class="form-group">
                     <label for="password">Logo</label>
@@ -59,9 +59,6 @@
               <a href="{{ url_for('entity.entity_list') }}" class="btn btn-danger" title="Back">Cancel</a>
             </div>
           </form>
-          
-          
-          
         </div>
         <!-- /.card -->
       </div>
@@ -74,54 +71,6 @@
 </div>
 <!-- /.content-wrapper -->
 
-<!-- CHECK BOX CHECK ALL -->
-<script>
-  document.getElementById('entityCheckAll').addEventListener('change', function() {
-    let entityCheckboxes = document.querySelectorAll('.entity-checkbox');
-    entityCheckboxes.forEach(checkbox => {
-      checkbox.checked = this.checked;
-    });
-  });
-
-  // document.getElementById('departmentCheckAll').addEventListener('change', function() {
-  //   let departmentCheckboxes = document.querySelectorAll('.department-checkbox');
-  //   departmentCheckboxes.forEach(checkbox => {
-  //     checkbox.checked = this.checked;
-  //   });
-  // });
-
-  document.getElementById('menuCheckAll').addEventListener('change', function() {
-    let menuCheckboxes = document.querySelectorAll('.menu-checkbox');
-    menuCheckboxes.forEach(checkbox => {
-      checkbox.checked = this.checked;
-    });
-  });
-</script>
-
-<!-- Toastr Notifications -->
-<!-- jQuery for get data from db menu-->
-<script type="text/javascript">
-  $(document).ready(function() {
-      // Ketika modal dibuka
-      $('#modal-default').on('show.bs.modal', function() {
-          $.ajax({
-              url: "{{ url_for('user.get_menus') }}",
-              type: 'GET',
-              success: function(menus) {
-                  let menuCheckboxes = '';
-                  menus.forEach(function(menu) {
-                      menuCheckboxes += `
-                      <div class="custom-control custom-checkbox">
-                          <input class="custom-control-input" type="checkbox" id="menu${menu[0]}" name="menus" value="${menu[0]}">
-                          <label for="menu${menu[0]}" class="custom-control-label">${menu[1]}</label>
-                      </div>`;
-                  });
-                  $('#menu-checkboxes').html(menuCheckboxes);
-              }
-          });
-      });
-  });
-  </script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -134,47 +83,4 @@
     });
 </script>
 
-<script>
-  function checkAll() {
-    var checkboxes = document.querySelectorAll('input[name="menus"]');
-    checkboxes.forEach((checkbox) => {
-      checkbox.checked = true;
-    });
-  }
-
-  function uncheckAll() {
-    var checkboxes = document.querySelectorAll('input[name="menus"]');
-    checkboxes.forEach((checkbox) => {
-      checkbox.checked = false;
-    });
-  }
-  
-  function checkAllEntity() {
-    var checkboxes = document.querySelectorAll('input[name="entities"]');
-    checkboxes.forEach((checkbox) => {
-      checkbox.checked = true;
-    });
-  }
-
-  function uncheckAllEntity() {
-    var checkboxes = document.querySelectorAll('input[name="entities"]');
-    checkboxes.forEach((checkbox) => {
-      checkbox.checked = false;
-    });
-  }
-
-  function checkAllDepartment() {
-    var checkboxes = document.querySelectorAll('input[name="department"]');
-    checkboxes.forEach((checkbox) => {
-      checkbox.checked = true;
-    });
-  }
-
-  function uncheckAllDepartment() {
-    var checkboxes = document.querySelectorAll('input[name="department"]');
-    checkboxes.forEach((checkbox) => {
-      checkbox.checked = false;
-    });
-  }
-</script>
   {% endblock %}
