@@ -10,12 +10,12 @@
     <div class="container-fluid">
       <div class="row mb-2">
         <div class="col-sm-6">
-          <h1>Registration Form</h1>
+          <h1>Entity Form</h1>
         </div>
         <div class="col-sm-6">
           <ol class="breadcrumb float-sm-right">
             <li class="breadcrumb-item"><a href="#">Home</a></li>
-            <li class="breadcrumb-item active">Register User</li>
+            <li class="breadcrumb-item active">Add Entity</li>
           </ol>
         </div>
       </div>
@@ -31,37 +31,32 @@
         <!-- general form elements -->
         <div class="card card-dark">
           <div class="card-header">
-            <h3 class="card-title">Form</h3>
+            <h3 class="card-title">Add New Entity</h3>
           </div>
           <!-- /.card-header -->
           <!-- form start -->
-          <form action="{{ url_for('user.user_change_password', id=user[0]) }}" method="POST">
+          <form action="{{ url_for('user.register', user_id=user[0] if user else None) }}" method="post">
             <div class="card-body">
               <div class="row">
                 <div class="col-md-3">
                   <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" class="form-control" id="username" name="username" value="{{ user[1] }}" required>
+                    <label for="entity_code">Entity Code</label>
+                    <input type="text" class="form-control" id="entity_code" name="entity_code" value="{{ user[1] if user else '' }}" placeholder="Define Entity Code" autocomplete="off" required>
                   </div>
                   <div class="form-group">
-                    <label for="email">Email address</label>
-                    <input type="email" class="form-control" id="email" name="email" value="{{ user[2] }}" required>
-                </div>
+                    <label for="entity_name">Entity Name</label>
+                    <input type="email" class="form-control" id="entity_code" name="entity_name" value="{{ user[2] if user else '' }}" placeholder="Masukkan Nama Entity" autocomplete="off" required>
+                  </div>
                   <div class="form-group">
-                    <label for="password">Current Password</label>
-                    <input type="password" class="form-control" id="current_password" name="current_password" required>
+                    <label for="password">Logo</label>
+                    <input type="file" name="files[]" multiple onchange="previewFiles(this)">
+                  </div>
                 </div>
-                <div class="form-group">
-                    <label for="new_password">New Password</label>
-                    <input type="password" class="form-control" id="new_password" name="new_password">
-                    <small class="form-text text-muted">Leave blank if you don't want to change the password</small>
-                </div>
-                </div>
-                </div>                
+              </div>
             </div>
             <div class="card-footer">
-              <button type="submit" class="btn btn-dark">Submit</button>
-              <a href="{{ url_for('user.user_list') }}" class="btn btn-danger" title="Back">Cancel</a>
+              <button type="submit" class="btn btn-dark">Save</button>
+              <a href="{{ url_for('entity.entity_list') }}" class="btn btn-danger" title="Back">Cancel</a>
             </div>
           </form>
           

@@ -1,1 +1,96 @@
-SAYA VIEW ENTITY
+{% extends 'base.html' %}
+
+<!-- INHERETENCE SIDEBAR -->
+
+<!--END INHERETENCE SIDEBAR -->
+
+<!-- INHERETENCE CONTENT -->
+{% block content %}
+
+<!--Content Wrapper. Contains page content -->
+<div class="content-wrapper">
+    <!-- Content Header (Page header) -->
+    <section class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1>Master Entity</h1>
+          </div>
+          <div class="col-sm-6">
+            <ol class="breadcrumb float-sm-right">
+              <li class="breadcrumb-item"><a href="#">Home</a></li>
+              <li class="breadcrumb-item active">Entity</li>
+            </ol>
+          </div>
+        </div>
+      </div><!-- /.container-fluid -->
+    </section>
+
+    <!-- Main content -->
+    <section class="content">
+        <div class="container-fluid">
+          <div class="row">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title"></h3>
+                  {% if session.level != 4 %}
+                  <a href="{{ url_for('entity.entity_form') }}" class="btn btn-app bg-default" title="Add Entity"><i class="fas fa-edit"></i>Add Entity</a>
+                  {% endif %}
+                </div>
+                <!-- /.card-header -->
+                <div class="card-body">
+                  <table id="example1" class="table table-bordered table-striped">
+                    <thead>
+                    <tr style="text-align: center;">
+                        <th style="width: 130px;">Entity Code</th>
+                        <th>Entity Name</th>
+                        <th>Logo</th>
+                        <th>Action</th>
+                      </tr>
+                      </thead>
+                      <tbody>
+                          {% for data in entity %}
+                          <tr>
+                            <td>{{ data[1] }}</td>
+                            <td>{{ data[2] }}</td>
+                            <td>{{ data[3] }}</td>
+                            <td>
+                              <a href="{{ url_for('entity.entity_form', id=data[0]) }}" class="btn btn-default btn-sm" title="Detail"><i class="fa fa-info-circle" aria-hidden="true"></i></a>
+                              {% if session.level != 4 %}
+                              <a href="{{ url_for('entity.entity_form', id=data[0]) }}" class="btn btn-default btn-sm" title="Edit PR"><i class="fa fa-edit" aria-hidden="true"></i></a>
+                              {% endif %}
+                            </td>
+                            <!-- PUT ACTION BUTTON HERE-->
+                          </tr>
+                          {% endfor %}
+                </table>
+              </div>
+              <!-- /.card-body -->
+            </div>
+            <!-- /.card -->
+          </div>
+          <!-- /.col -->
+        </div>
+        <!-- /.row -->
+      </div>
+      <!-- /.container-fluid -->
+    </section>
+    <!-- /.content -->
+  </div>
+  <!-- /.content-wrapper -->
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          toastr.{{ category }}("{{ message | safe }}");
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  });
+</script>
+
+{% endblock %}
+<!-- END INHERETENCE CONTENT -->

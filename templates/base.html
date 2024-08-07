@@ -271,6 +271,7 @@
     <script src="{{ url_for('static', filename='plugins/datatables-buttons/js/buttons.colVis.min.js') }}"></script>
     <script src="{{ url_for('static', filename='plugins/daterangepicker/daterangepicker.js') }}"></script>
 
+
     
     <!-- Select2 -->
     <script src="{{ url_for('static', filename='plugins/select2/js/select2.full.min.js') }}"></script>
@@ -288,6 +289,14 @@
     $('.select2bs4').select2({
       theme: 'bootstrap4'
     })
+
+    //Date picker
+    $('#reservationdate').datetimepicker({
+    format: 'L'
+    });
+
+    //Date range picker
+    $('#reservation').daterangepicker()
 
     $("#example1").DataTable({
       "responsive": true, "lengthChange": false, "autoWidth": false,

@@ -23,11 +23,19 @@ from modules.mail import pr_mail, approval_notification_mail, alert_mail, pr_ale
 # ====================================================================================================================================
 # PR UTILITES
 # ====================================================================================================================================
+# def login_required(f):
+#     @wraps(f)
+#     def decorated_function(*args, **kwargs):
+#         if 'loggedin' not in session:
+#             return redirect(url_for('auth.auth'))
+#         return f(*args, **kwargs)
+#     return decorated_function
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'loggedin' not in session:
-            return redirect(url_for('auth.auth'))
+            return redirect(url_for('auth.auth', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -73,7 +81,7 @@ def pr_list():
         FROM user_entity WHERE user_id = %s
         )
         AND (ph.requester_id = %s OR pa.approval_user_id = %s)
-        ORDER BY ph.no_pr ASC
+        ORDER BY 9 ASC
         '''
         cursor.execute(query, (user_id, user_id, user_id))
         data = cursor.fetchall()
@@ -943,7 +951,11 @@ def pr_generate_pdf(no_pr):
             ua.username,
             pa.status,
             pa.notes,
-            DATE(pa.created_at)approval_date,
+            CASE 
+                WHEN pa.status = 'APPROVED' THEN DATE(pa.created_at)
+                WHEN pa.status = 'REJECTED' THEN DATE(pa.created_at)
+                ELSE 'PENDING'
+            END approval_date,
             CASE 
                 WHEN pa.status = 'APPROVED' THEN ua.sign_path
                 ELSE NULL
@@ -989,6 +1001,7 @@ def pr_generate_pdf(no_pr):
     name_footer_style = ParagraphStyle(name='footer', fontSize=10, fontName='Helvetica-Bold',  alignment=TA_CENTER)
     detail_key_style = ParagraphStyle(name='detail_key', fontSize=10, fontName='Helvetica-Bold')
     detail_value_style = ParagraphStyle(name='detail_value', fontSize=10)
+    date_approval = ParagraphStyle(name='footer', fontSize=8, fontName='Helvetica-Bold', alignment=TA_CENTER)
 
     # FOR TITLE
     title = Paragraph('Purchase Requisition (PR)', title_style)
@@ -1120,7 +1133,7 @@ def pr_generate_pdf(no_pr):
 
     # ADD REQUESTER SIGNATURE AND NAME
     signature_row = [signature_image]
-    date_row = [Paragraph('', footer_style)]
+    date_row = [Paragraph('', date_approval)]
     approval_row = [Paragraph(f'({pr_header[3]})', footer_style)]
 
     # ADD APPROVAL SIGNATURE DATE APPROVED AND NAMES
@@ -1132,14 +1145,14 @@ def pr_generate_pdf(no_pr):
         # SIGNATURE DATA
         signature_row.append(Image(sign_path, width=50, height=50))
         # DATE APPROVED
-        date_row.append(Paragraph(approval_date, footer_style))
+        date_row.append(Paragraph(approval_date, date_approval))
         # APRROVAL NAME DATA
         approval_row.append(Paragraph(approval_name, footer_style))
 
     # ADD 3 ROWS OR MORE
     while len(approval_row) < 3:
         approval_row.append(Paragraph('', footer_style))
-        date_row.append(Paragraph('', footer_style))
+        date_row.append(Paragraph('', date_approval))
         signature_row.append(Paragraph('', footer_style))
 
     table_footer_data.append(signature_row)
@@ -1177,6 +1190,8 @@ def pr_generate_pdf(no_pr):
     ''', (no_pr, ))
 
     additional_paths = [os.path.join('static', row[0]) for row in cur.fetchall()]
+
+    cur.close()
 
     # ADD ALL PAGES FROM MAIN PDF
     for page_num in range(len(main_pdf.pages)):
@@ -1241,6 +1256,57 @@ def pr_generate_pdf(no_pr):
     # return send_file(buffer, as_attachment=False, download_name=f'{no_pr}_{today}.pdf', mimetype='application/pdf')
     return send_file(combined_buffer, as_attachment=False, download_name=f'{no_pr}_{today}.pdf', mimetype='application/pdf')
 # ========================================================================================================================================
+
+
+# SEARCH PR BY DATE ======================================================================================================================
+@pr_blueprint.route('/pr_search_date', methods=['GET', 'POST'])
+def pr_search_date():
+    from app import mysql
+    cur = mysql.connection.cursor()
+    if request.method == 'POST':
+        dateRange = request.form['created_at']
+        start_date, end_date = dateRange.split(' - ')
+        start_date = start_date.replace("/","-")
+        start_date = datetime.strptime(start_date, "%m-%d-%Y").strftime("%Y-%m-%d")
+        end_date = end_date.replace("/","-")
+        end_date = datetime.strptime(end_date, "%m-%d-%Y").strftime("%Y-%m-%d")
+        user_id = session.get('id', 'system')
+
+        try:
+            query = '''
+                SELECT DISTINCT 
+                    ph.no_pr,
+                    DATE(ph.tanggal_permintaan) AS tanggal_permintaan,
+                    ph.requester_id,
+                    ph.requester_name,
+                    ph.nama_project,
+                    ph.entity_id,
+                    e.entity_name,
+                    ph.total_budget_approved,
+                    ph.remarks,
+                    ph.created_at
+                FROM pr_header ph 
+                LEFT JOIN pr_detail pd ON ph.no_pr = pd.no_pr 
+                LEFT JOIN pr_approval pa ON ph.no_pr = pa.no_pr 
+                LEFT JOIN entity e ON ph.entity_id = e.id
+                WHERE ph.entity_id IN (
+                SELECT DISTINCT entity_id
+                FROM user_entity WHERE user_id = %s
+                )
+                AND (ph.requester_id = %s OR pa.approval_user_id = %s)
+                AND DATE(ph.created_at) BETWEEN %s AND %s
+            '''
+            cur.execute(query, (user_id, user_id, user_id, start_date, end_date))
+            data = cur.fetchall()
+            cur.close()
+        
+        except Exception as e:
+            print(f"ERROR cannot be fetched: {e}")
+
+        return render_template('pr/pr_list.html', data=data)
+        # return f"start_date: {start_date}, end_date: {end_date}, user_id: {user_id}"
+
+    return render_template('pr/search_date.html')
 
 
 # TESTER RESPONSE ========================================================================================================================

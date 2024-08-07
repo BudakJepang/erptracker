@@ -24,7 +24,7 @@ def check_access(menu_id):
             cursor.close()
 
             if not access:
-                flash('You do not have access to this page', 'danger')
+                flash('You do not have access to this page', 'warning')
                 return abort(403)
             return f(*args, **kwargs)
         return decorated_function
