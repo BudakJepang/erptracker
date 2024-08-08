@@ -53,7 +53,6 @@
                         <th>PR Date</th>
                         <th>Total Budget</th>
                         <th>Action</th>
-                        <th>Status</th>
                       </tr>
                       </thead>
                       <tbody>
@@ -70,11 +69,6 @@
                               {% if session.level != 4 %}
                               <a href="{{ url_for('pr.pr_edit', no_pr=data[0]) }}" class="btn btn-default btn-sm" title="Edit PR"><i class="fa fa-edit" aria-hidden="true"></i></a>
                               {% endif %}
-                            </td>
-                            <td>
-                              {% for appr in appr %}
-                              {{ appr }}
-                              {% endfor %}
                             </td>
                             <!-- PUT ACTION BUTTON HERE-->
                           </tr>

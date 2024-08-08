@@ -161,59 +161,56 @@ def user_change_password(id):
         new_password = request.form['new_password']
         signature = request.files.get('signature')
         signature_filename = None
-        # return f'{signature_filename}'
-        
-        if signature:
-            if signature.filename != '':
-                signature_filename = secure_filename(signature.filename)
-                signature.save(os.path.join(current_app.config['UPLOAD_FOLDER'], signature_filename))
-        
-        # return f"{signature_filename}"
 
-        # cursor.execute('SELECT password FROM user_accounts WHERE id=%s', (user_id,))
-        # user = cursor.fetchone()
+        # uploads/img.png (WITH BACKSLASH PATH)
+        if signature and signature.filename != '':
+            signature_filename = secure_filename(signature.filename)
+            signature_path = os.path.join('static/uploads', signature_filename)
+            signature.save(os.path.join(current_app.config['UPLOAD_FOLDER'], signature_filename))
 
-        # if user and check_password_hash(user[0], current_password):
-        #     if new_password:
-        #         new_password_hashed = generate_password_hash(new_password)
-        #         cursor.execute('''
-        #             UPDATE user_accounts 
-        #             SET username=%s, email=%s, password=%s, updated_at=%s, sign_path=%s 
-        #             WHERE id=%s
-        #         ''', (username, email, new_password_hashed, datetime.now(), signature_filename, user_id))
-        #     else:
-        #         cursor.execute('''
-        #             UPDATE user_accounts 
-        #             SET username=%s, email=%s, updated_at=%s, sign_path=%s
-        #             WHERE id=%s
-        #         ''', (username, email, datetime.now(), signature_filename, user_id))
+        # img.png (WITHOUT BACKSLASH PATH)
+        # if signature and signature.filename != '':
+        #     signature_filename = secure_filename(signature.filename)
+        #     signature.save(os.path.join(current_app.config['UPLOAD_FOLDER'], signature_filename))
 
-        #     # if signature_filename:
-        #     #     cursor.execute('''
-        #     #         INSERT INTO user_accounts (user_id, sign_path, updated_at)
-        #     #         VALUES (%s, %s, %s)
-        #     #         ON DUPLICATE KEY UPDATE sign_path=%s, updated_at=%s
-        #     #     ''', (user_id, signature_filename, datetime.now(), signature_filename, datetime.now()))
+        cursor.execute('SELECT password FROM user_accounts WHERE id=%s', (user_id,))
+        user = cursor.fetchone()
 
-        #     mysql.connection.commit()
-        #     flash('User updated successfully', 'success')
-        #     return redirect(url_for('user.user_list'))
-        # else:
-        #     flash('Current password is incorrect', 'warning')
+        if user and check_password_hash(user[0], current_password):
+            if new_password:
+                new_password_hashed = generate_password_hash(new_password)
+                cursor.execute('''
+                    UPDATE user_accounts 
+                    SET username=%s, email=%s, password=%s, updated_at=%s, sign_path=%s 
+                    WHERE id=%s
+                ''', (username, email, new_password_hashed, datetime.now(), signature_path, user_id))
+            else:
+                cursor.execute('''
+                    UPDATE user_accounts 
+                    SET username=%s, email=%s, updated_at=%s, sign_path=%s
+                    WHERE id=%s
+                ''', (username, email, datetime.now(), signature_path, user_id))
 
-        # return redirect(url_for('user.user_change_password', id=user_id))
+            mysql.connection.commit()
+            flash('User updated successfully', 'success')
+            return redirect(url_for('user.user_list'))
+        else:
+            flash('Current password is incorrect', 'warning')
 
-    cursor.execute('SELECT id, username, email, level FROM user_accounts WHERE id=%s', (id,))
+        return redirect(url_for('user.user_change_password', id=user_id))
+
+    cursor.execute('SELECT id, username, email, level, sign_path FROM user_accounts WHERE id=%s', (id,))
     user = cursor.fetchone()
+    user = list(user)
+    print(f"INI USER USER USER USER SUR {user}")
+    user[4] = user[4].replace("static/","")
     cursor.close()
 
     if user is None:
         flash('User not found', 'warning')
         return redirect(url_for('user.list_users'))
 
-    # return render_template('users/user_change_password.html', user=user)
     return render_template('users/user_change_password.html', user=user)
-    # return f"{signature}"
 # ====================================================================================================================================
 
 

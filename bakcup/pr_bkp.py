@@ -1064,3 +1064,36 @@ cur.execute("DELETE FROM pr_detail WHERE no_pr = %s AND id = %s", (no_pr, del_id
     # Menambahkan tabel footer ke dalam elemen dokumen
     elements.append(table_footer)
     elements.append(Spacer(1, 12))
+
+# PR LIST QUERY ==============================================
+query = '''SELECT 
+    ph.no_pr,
+    DATE(ph.tanggal_permintaan) tanggal_permintaan,
+    ph.requester_id,
+    ph.requester_name,
+    ph.nama_project,
+    ph.entity_id,
+    e.entity_name,
+    ph.total_budget_approved,
+    ph.remarks,
+    ph.created_at,
+    pa.status
+FROM pr_header ph
+LEFT JOIN pr_detail pd ON ph.no_pr = pd.no_pr 
+LEFT JOIN (
+    SELECT pa1.no_pr, pa1.status, pa1.approval_user_id
+    FROM pr_approval pa1
+    INNER JOIN (
+        SELECT no_pr, MAX(approval_no) as max_approval_no
+        FROM pr_approval
+        GROUP BY no_pr
+    ) pa2 ON pa1.no_pr = pa2.no_pr AND pa1.approval_no = pa2.max_approval_no
+) pa ON ph.no_pr = pa.no_pr
+LEFT JOIN entity e ON ph.entity_id = e.id
+WHERE ph.entity_id IN (
+    SELECT DISTINCT entity_id
+    FROM user_entity 
+    WHERE user_id = 1
+)
+AND (ph.requester_id = 1 OR pa.approval_user_id = 1)
+AND ph.no_pr = 'PR-CNI-TCH-2408-001';'''

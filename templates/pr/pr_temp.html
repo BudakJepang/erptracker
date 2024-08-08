@@ -211,6 +211,7 @@
                       <h3 class="card-title">UPLOAD DOCUMENTS</h3>
                     </div>
                     <div class="card-body">
+                      <div class="table-responsive">
                       <div style="margin-bottom: 10px;">
                         <button type="button" class="btn btn-default" id="add-upload" title="Add Upload">
                           <i class="fas fa-plus"></i>
@@ -243,12 +244,13 @@
                         </tbody>
                       </table>
                     </div>
+                    </div>
                   </div>
                 </div>
 
                 <div class="card-footer clearfix">
                   <button type="submit" class="btn btn-secondary">Submit</button>
-                  <a href="{{ url_for('pr.pr_list') }}" class="btn btn-secondary" title="Back">Back</a>
+                  <a href="{{ url_for('pr.pr_list') }}" class="btn btn-danger" title="Back">Back</a>
                 </div>
               </div>
             </form>

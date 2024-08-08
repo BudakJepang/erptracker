@@ -1,6 +1,7 @@
 from flask import Blueprint, redirect, render_template, request, session, url_for, flash
 from werkzeug.security import check_password_hash, generate_password_hash
-
+from functools import wraps
+import logging
 
 # BLUEPRINT AUTH VARIABLE
 auth_blueprint = Blueprint('auth', __name__)
@@ -10,24 +11,22 @@ auth_blueprint = Blueprint('auth', __name__)
 def auth():
     return render_template('auth/login.html')
 
+
 # LOGIN
-@auth_blueprint.route('/login', methods=('GET','POST'))
+@auth_blueprint.route('/login', methods=('GET', 'POST'))
 def login():
-    from app import mysql
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
-        
-        # check users data
+        from app import mysql
         cursor = mysql.connection.cursor()
         cursor.execute('SELECT id, username, email, password, level FROM user_accounts WHERE email=%s', (email,))
         account = cursor.fetchone()
         
-        # account validation 
         if account is None:
-            flash('Login failed, please check your username', 'danger')
+            flash('Login failed, please check your username', 'warning')
         elif not check_password_hash(account[3], password):
-            flash('Login failed, check your password is correct', 'danger')
+            flash('Login failed, check your password is correct', 'warning')
         else:
             session.clear()
             session['loggedin'] = True
@@ -36,7 +35,6 @@ def login():
             session['level'] = account[4]
             session['email'] = account[2]
 
-            # get filter user as entity
             cursor.execute('''
                 SELECT ue.entity_id, e.entity_name
                 FROM user_entity ue
@@ -46,12 +44,15 @@ def login():
             entities = cursor.fetchall()
             session['entities'] = [{'entity_id': entity[0], 'entity_name': entity[1]} for entity in entities]
             cursor.close()
-            # next_url = request.args.get('next')
-            # return redirect(next_url or url_for('index'))
-            # return next_url
-            return redirect(url_for('index'))
-        
+            
+            # Get the next URL if present
+            next_url = request.args.get('next')
+            # logging.basicConfig(level=logging.DEBUG)
+            # logging.debug(f"Next URL URL URL URL URL URL URL URL URL: {next_url}")
+            return redirect(next_url or url_for('index'))
+            # return f'{next_url}'
     return render_template('auth/login.html')
+
 
 # LOGOUT
 @auth_blueprint.route('/logout')

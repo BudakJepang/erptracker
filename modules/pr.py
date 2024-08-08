@@ -23,21 +23,23 @@ from modules.mail import pr_mail, approval_notification_mail, alert_mail, pr_ale
 # ====================================================================================================================================
 # PR UTILITES
 # ====================================================================================================================================
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'loggedin' not in session:
-            return redirect(url_for('auth.auth'))
-        return f(*args, **kwargs)
-    return decorated_function
-
 # def login_required(f):
 #     @wraps(f)
 #     def decorated_function(*args, **kwargs):
 #         if 'loggedin' not in session:
-#             return redirect(url_for('auth.auth', next=request.url))
+#             return redirect(url_for('auth.auth'))
 #         return f(*args, **kwargs)
 #     return decorated_function
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'loggedin' not in session:
+            next_url = request.url
+            logging.debug(f"Redirecting to login, next URL: {next_url}")
+            return redirect(url_for('auth.login', next=next_url))
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 # BLUEPRINT AUTH VARIABLE
@@ -149,8 +151,8 @@ def generate_pr():
 
 
 # MAIN PR SUBMIT_________________________________________________________________
-@login_required
 @pr_blueprint.route('/pr_temp_submit', methods=['GET', 'POST'])
+@login_required
 def pr_temp_submit():
     pr_number = None
 
@@ -1005,7 +1007,7 @@ def pr_generate_pdf(no_pr):
     name_footer_style = ParagraphStyle(name='footer', fontSize=10, fontName='Helvetica-Bold',  alignment=TA_CENTER)
     detail_key_style = ParagraphStyle(name='detail_key', fontSize=10, fontName='Helvetica-Bold')
     detail_value_style = ParagraphStyle(name='detail_value', fontSize=10)
-    date_approval = ParagraphStyle(name='footer', fontSize=8, fontName='Helvetica-Bold', alignment=TA_CENTER)
+    date_approval = ParagraphStyle(name='footer', fontSize=8, fontName='Helvetica', alignment=TA_CENTER)
 
     # FOR TITLE
     title = Paragraph('Purchase Requisition (PR)', title_style)
@@ -1132,7 +1134,7 @@ def pr_generate_pdf(no_pr):
     ]
 
     # SPACING BETWEEN NAME AND SIGNATURE
-    for x in range(1):
+    for x in range(0):
         table_footer_data.append([Paragraph('', footer_style), Paragraph('', footer_style), Paragraph('', footer_style)])
 
     # ADD REQUESTER SIGNATURE AND NAME

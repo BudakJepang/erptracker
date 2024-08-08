@@ -59,7 +59,13 @@
                           <tr>
                             <td>{{ user[1] }}</td>
                             <td>{{ user[2] }}</td>
-                            <td>{{ user[3] }}</td>
+                            <td>
+                              {% if user[3] == 1%} Super Admin
+                              {% elif user[3] == 2%} Admin
+                              {% elif user[3] == 3%} Officer
+                              {% elif user[3] == 4%} Approver
+                              {% endif %}
+                            </td>
                             <td>{{ user[4] }}</td>
                             <td>{{ user[5] }}</td>
                             <td>{{ user[6] }}</td>

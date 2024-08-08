@@ -16,16 +16,16 @@ def appFlask():
     app = Flask(__name__)
 
     # DB CONN MY MAC_________________________________________
-    # app.config['MYSQL_HOST'] = '10.0.13.247' 
-    # app.config['MYSQL_USER'] = 'rohman'
-    # app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
-    # app.config['MYSQL_DB'] = 'playground'
+    app.config['MYSQL_HOST'] = '10.0.13.247' 
+    app.config['MYSQL_USER'] = 'rohman'
+    app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
+    app.config['MYSQL_DB'] = 'playground'
 
     # DB ONPREM_______________________________________________
-    app.config['MYSQL_HOST'] = '10.0.12.53' 
-    app.config['MYSQL_USER'] = 'data-tech'
-    app.config['MYSQL_PASSWORD'] = '!@#Bismill4h'
-    app.config['MYSQL_DB'] = 'erp'
+    # app.config['MYSQL_HOST'] = '10.0.12.53' 
+    # app.config['MYSQL_USER'] = 'data-tech'
+    # app.config['MYSQL_PASSWORD'] = '!@#Bismill4h'
+    # app.config['MYSQL_DB'] = 'erp'
 
     # DB HOME_________________________________________________
     # app.config['MYSQL_HOST'] = '10.1.1.6'
@@ -51,11 +51,21 @@ mysql = mysqlConn(app)
 # MENU FILTER FOR USER AND LOGIN REQUIRED 
 # ================================================================================================================
 # LOCK REQUIRED TO LOGIN
+# def login_required(f):
+#     @wraps(f)
+#     def decorated_function(*args, **kwargs):
+#         if 'loggedin' not in session:
+#             return redirect(url_for('auth.auth', next=request.url))
+#         return f(*args, **kwargs)
+#     return decorated_function
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'loggedin' not in session:
-            return redirect(url_for('auth.auth', next=request.url))
+            next_url = request.url
+            # logging.debug(f"Redirecting to login, next URL: {next_url}")
+            return redirect(url_for('auth.login', next=next_url))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -182,12 +192,12 @@ if __name__ == '__main__':
     # app.run(host='10.1.1.6', port=5000, debug=True)
     
     # MY MAC__________________________________________
-    # app.run(host='10.0.13.247', port=5000, debug=True)
+    app.run(host='10.0.13.247', port=5000, debug=True)
 
     # ON PREM_________________________________________
     # app.run(host='10.0.13.53', port=5000, debug=True)
    
     # ON PREM DEV_____________________________________
-    app.run(host='10.0.12.53', port=1213, debug=True)
+    # app.run(host='10.0.12.53', port=1213, debug=True)
 
 # ================================================================================================================
