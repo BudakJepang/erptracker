@@ -716,3 +716,455 @@
   
 {% endblock %}
 <!-- END INHERETENCE CONTENT -->
+
+
+<!-- BACKUP AGUSTUS 15 2024 -->
+{% extends 'base.html' %}
+
+<!-- INHERETENCE SIDEBAR -->
+
+<!--END INHERETENCE SIDEBAR -->
+
+<!-- INHERETENCE CONTENT -->
+{% block content %}
+
+<!-- SCRIPT UNTUK COMA PADA NUMBER -->
+<script>
+  function formatNumber(num) {
+      return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
+
+  document.addEventListener('DOMContentLoaded', (event) => {
+      const input = document.getElementById('total_budget_approved');
+
+      input.addEventListener('input', (e) => {
+          let value = input.value.replace(/,/g, '');
+          if (!isNaN(value) && value !== '') {
+              input.value = formatNumber(value);
+          }
+      });
+
+      const form = document.querySelector('form');
+      form.addEventListener('submit', (e) => {
+          let value = input.value.replace(/,/g, '');
+          input.value = value;
+      });
+  });
+</script>
+<!-- END SCRIPT UNTUK COMA PADA NUMBER -->
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper">
+  <!-- Content Header (Page header) -->
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1>Purchase Requisition</h1>
+        </div>
+        <div class="col-sm-6">
+          <ol class="breadcrumb float-sm-right">
+            <li class="breadcrumb-item"><a href="#">Home</a></li>
+            <li class="breadcrumb-item active">PR Input</li>
+          </ol>
+        </div>
+      </div>
+    </div><!-- /.container-fluid -->
+  </section>
+
+<!-- Main FORM PR HEADER and PR DETAIL -->
+<section class="content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card card-secondary">
+          <div class="card-header">
+            <h3 class="card-title">PR INPUT</h3>
+          </div>
+          <div class="card-body">
+            <form action="{{ url_for('pr.pr_temp_submit') }}" method="POST" enctype="multipart/form-data">
+              <div class="row">
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label>Entity</label>
+                    <select class="form-control select2bs4" name="entity" id="entity" style="width: 100%;" required>
+                      <option value="">Select Entity ...</option>
+                      {% for entity in entities %}
+                      <option value="{{ entity[1] }}">{{ entity[2] }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label>Department</label>
+                    <select class="form-control select2bs4" name="department" id="department" style="width: 100%;" required>
+                      <option value="">Select Department ...</option>
+                      {% for department in departments %}
+                      <option value="{{ department[2] }}" data-entity-id="{{ department[1] }}">{{ department[3] }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label for="no_pr">Nomor PR</label>
+                    <input type="text" name="no_pr" id="no_pr" class="form-control" disabled>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label>Date</label>
+                    <div class="input-group date" id="reservationdate" data-target-input="nearest">
+                      <input type="date" name="tanggal_permintaan" class="form-control" />
+                      <div class="input-group-append" data-target="#reservationdate" data-toggle="">
+                        <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label for="nama_project">Nama Project</label>
+                    <input class="form-control" type="text" id="nama_project" name="nama_project" value="" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="total_budget_approved">Total Budget Approved</label>
+                    <input class="form-control" type="text" id="total_budget_approved" name="total_budget_approved" required>
+                  </div>
+                </div>
+              </div>
+
+              <!-- FORM PR DETAIL -->
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">PR DETAIL INPUT</h3>
+                </div>
+                <div class="card-body">
+                  <div style="margin-bottom: 10px;">
+                    <button type="button" class="btn btn-default" id="add-row" title="Add New Form">
+                      <i class="fas fa-plus"></i>
+                    </button>
+                  </div>
+                  <table class="table table-bordered" id="pr-detail-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 10px">No</th>
+                        <th style="text-align: center;">Nama Barang / Jasa</th>
+                        <th style="text-align: center;">Spesifikasi Barang / Jasa (ukuran, merk, type, bahan)</th>
+                        <th style="text-align: center;">QTY</th>
+                        <th style="text-align: center;">Date Required</th>
+                        <th style="width: 90px; text-align: center;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>1.</td>
+                        <td style="width: 300px">
+                          <input class="form-control" type="text" name="nama_item1" required placeholder="Enter ...">
+                        </td>
+                        <td><textarea class="form-control" rows="3" id="spesifikasi1" name="spesifikasi1" placeholder="Enter ..."></textarea></td>
+                        <td style="width: 120px">
+                          <input class="form-control" type="number" id="qty1" name="qty1" value="" required placeholder="Enter ...">
+                        </td>
+                        <td style="width: 220px">
+                          <div class="input-group date" id="tanggal1" data-target-input="nearest">
+                            <input type="date" name="tanggal1" class="form-control" />
+                            <div class="input-group-append" data-target="#reservationdate" data-toggle="">
+                              <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style="text-align: center;">
+                          <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete PR">
+                            <i class="fa fa-trash"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- FORM APPROVAL & UPLOAD DOCUMENTS -->
+                <div class="row">
+                  <div class="col-sm-6">
+                    <div class="card-header">
+                      <h3 class="card-title">FORM APPROVAL</h3>
+                    </div>
+                    <div class="card-body">
+                      <div style="margin-bottom: 10px;">
+                        <button type="button" class="btn btn-default" id="add-approval" title="Add Approval">
+                          <i class="fas fa-plus"></i>
+                        </button>
+                      </div>
+                      <table class="table table-bordered" id="approval-table">
+                        <thead>
+                          <tr>
+                            <th style="width: 10px">No</th>
+                            <th style="text-align: center;">Approval</th>
+                            <th style="width: 90px; text-align: center;">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>1.</td>
+                            <td style="width: 80%">
+                              <select class="form-control select2bs4" name="approval1_user_id" id="approval1_user_id" style="width: 100%;" required>
+                                <option value="">Select Approval ...</option>
+                                {% for approver in approver %}
+                                <option value="{{ approver[0] }}" data-entity-id="{{ approver[1] }}">{{ approver[1] }}</option>
+                                {% endfor %}
+                              </select>
+                            </td>
+                            <td style="text-align: center;">
+                              <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Approval">
+                                <i class="fa fa-trash"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div class="col-sm-6">
+                    <div class="card-header">
+                      <h3 class="card-title">UPLOAD DOCUMENTS</h3>
+                    </div>
+                    <div class="card-body">
+                      <div class="table-responsive">
+                      <div style="margin-bottom: 10px;">
+                        <button type="button" class="btn btn-default" id="add-upload" title="Add Upload">
+                          <i class="fas fa-plus"></i>
+                        </button>
+                      </div>
+                      <table class="table table-bordered" id="upload-table">
+                        <thead>
+                          <tr>
+                            <th style="width: 10px">No</th>
+                            <th style="text-align: center;">Upload Documents</th>
+                            <th style="text-align: center;">Preview</th>
+                            <th style="width: 90px; text-align: center;">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>1.</td>
+                            <td style="width: 80%">
+                              <input type="file" name="files[]" multiple onchange="previewFiles(this)">
+                            </td>
+                            <td>
+                              <div class="preview" style="width: 150px; text-align: center;"></div>
+                            </td>
+                            <td style="text-align: center;">
+                              <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Upload">
+                                <i class="fa fa-trash"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card-footer clearfix">
+                  <button type="submit" class="btn btn-secondary">Submit</button>
+                  <a href="{{ url_for('pr.pr_list') }}" class="btn btn-danger" title="Back">Back</a>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  $(document).ready(function() {
+    function updateRowNumbers(tableId) {
+      $(tableId + " tbody tr").each(function(index) {
+        $(this).find("td:first").text((index + 1) + ".");
+        $(this).find("input, select, textarea").each(function() {
+          const name = $(this).attr("name");
+          if (name) {
+            const newName = name.replace(/\d+/, (index + 1));
+            $(this).attr("name", newName);
+          }
+        });
+      });
+    }
+
+    $("#add-row").click(function() {
+      const rowNumber = $("#pr-detail-table tbody tr").length + 1;
+      const newRow = `
+      <tr>
+        <td>${rowNumber}.</td>
+        <td style="width: 300px"><input class="form-control" type="text" name="nama_item${rowNumber}" required placeholder="Enter ..."></td>
+        <td><textarea class="form-control" rows="3" name="spesifikasi${rowNumber}" placeholder="Enter ..."></textarea></td>
+        <td style="width: 120px"><input class="form-control" type="number" name="qty${rowNumber}" required placeholder="Enter ..."></td>
+        <td style="width: 220px">
+          <div class="input-group date" id="tanggal${rowNumber}" data-target-input="nearest">
+            <input type="date" name="tanggal${rowNumber}" class="form-control" />
+            <div class="input-group-append" data-target="#reservationdate${rowNumber}" data-toggle="">
+              <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+            </div>
+          </div>
+        </td>
+        <td style="text-align: center;">
+          <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete PR">
+            <i class="fa fa-trash"></i>
+          </button>
+        </td>
+      </tr>`;
+      $("#pr-detail-table tbody").append(newRow);
+      updateRowNumbers("#pr-detail-table");
+    });
+
+    // Menambahkan baris baru
+    $("#add-approval").click(function() {
+        const rowNumber = $("#approval-table tbody tr").length + 1;
+        const newRow = `
+        <tr>
+            <td>${rowNumber}.</td>
+            <td style="width: 80%">
+                <select class="form-control select2bs4" name="approval_user_id${rowNumber}" id="approval_user_id${rowNumber}" style="width: 100%;" required>
+                    <option value="">Select Approval ...</option>
+                    {% for approver in approver %}
+                    <option value="{{ approver[0] }}" data-entity-id="{{ approver[1] }}">{{ approver[1] }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td style="text-align: center;">
+                <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Approval">
+                    <i class="fa fa-trash"></i>
+                </button>
+            </td>
+        </tr>`;
+        $("#approval-table tbody").append(newRow);
+        updateRowNumbers("#approval-table");
+    });
+
+    // Mengupdate nomor baris setelah penghapusan
+    function updateRowNumbers(tableId) {
+        $(`${tableId} tbody tr`).each(function(index) {
+            $(this).find('td:first').text((index + 1) + '.');
+            $(this).find('select').attr('name', 'approval_user_id' + (index + 1));
+            $(this).find('select').attr('id', 'approval_user_id' + (index + 1));
+        });
+    }
+
+    // Menghapus baris dan memperbarui nomor baris
+    // $(document).on('click', '.delete-row', function() {
+    //     $(this).closest('tr').remove();
+    //     updateRowNumbers("#approval-table");
+    // });
+
+      $("#add-upload").click(function() {
+        const rowNumber = $("#upload-table tbody tr").length + 1;
+        const newRow = `
+        <tr>
+          <td>${rowNumber}.</td>
+          <td style="width: 80%">
+            <input type="file" name="files[]" multiple onchange="previewFiles(this)">
+          </td>
+          <td>
+            <div class="preview" style="width: 150px; text-align: center;"></div>
+          </td>
+          <td style="text-align: center;">
+            <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Upload">
+              <i class="fa fa-trash"></i>
+            </button>
+          </td>
+        </tr>`;
+        $("#upload-table tbody").append(newRow);
+        updateRowNumbers("#upload-table");
+      });
+
+    // Preview upload documents
+    // $(document).on('change', 'input[type="file"]', function() {
+    //   const fileInput = $(this)[0];
+    //   const fileName = fileInput.files[0].name;
+    //   const fileReader = new FileReader();
+    //   fileReader.onload = function(e) {
+    //     const fileURL = e.target.result;
+    //     const previewHTML = `
+    //       <div class="file-preview">
+    //         <p>${fileName}</p>
+    //         <img src="${fileURL}" alt="File Preview" class="img-fluid" style="max-height: 100px;">
+    //       </div>`;
+    //     $(fileInput).closest('td').append(previewHTML);
+    //   };
+    //   fileReader.readAsDataURL(fileInput.files[0]);
+    // });
+
+    $(document).on("click", ".delete-row", function() {
+      $(this).closest("tr").remove();
+      updateRowNumbers("#pr-detail-table");
+      updateRowNumbers("#approval-table");
+      updateRowNumbers("#upload-table");
+    });
+
+    function updatePRNumber() {
+      const entity = $('#entity').val();
+      const department = $('#department').val();
+      if (entity && department) {
+        $.ajax({
+          url: '/generate_pr',
+          method: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({ entity: entity, department: department }),
+          success: function(response) {
+            $('#no_pr').val(response.pr_number);
+          }
+        });
+      }
+    }
+
+    $('#entity, #department').change(updatePRNumber);
+  });
+</script>
+
+<script>
+  function previewFiles(input) {
+    var previewContainer = input.parentNode.nextElementSibling.querySelector('.preview');
+    previewContainer.innerHTML = ''; // Clear existing previews
+
+    var files = input.files;
+
+    if (files) {
+      for (var i = 0; i < files.length; i++) {
+        var reader = new FileReader();
+
+        reader.onload = function (e) {
+          var img = document.createElement('img');
+          img.src = e.target.result;
+          img.alt = 'File Preview';
+          img.classList.add('img-fluid');
+          img.style.maxHeight = '100px';
+          previewContainer.appendChild(img);
+        };
+
+        reader.readAsDataURL(files[i]);
+      }
+    }
+  }
+</script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          toastr.{{ category }}("{{ message | safe }}");
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  });
+</script>
+
+  
+{% endblock %}
+<!-- END INHERETENCE CONTENT -->

@@ -188,7 +188,7 @@
                           <tr>
                             <td>1.</td>
                             <td style="width: 80%">
-                              <select class="form-control select2bs4" name="approval1_user_id" id="approval1_user_id" style="width: 100%;" required>
+                              <select class="form-control select2bs4" name="approval_user_id1" id="approval1_user_id1" style="width: 100%;" required>
                                 <option value="">Select Approval ...</option>
                                 {% for approver in approver %}
                                 <option value="{{ approver[0] }}" data-entity-id="{{ approver[1] }}">{{ approver[1] }}</option>
@@ -337,10 +337,10 @@
     }
 
     // Menghapus baris dan memperbarui nomor baris
-    $(document).on('click', '.delete-row', function() {
-        $(this).closest('tr').remove();
-        updateRowNumbers("#approval-table");
-    });
+    // $(document).on('click', '.delete-row', function() {
+    //     $(this).closest('tr').remove();
+    //     updateRowNumbers("#approval-table");
+    // });
 
       $("#add-upload").click(function() {
         const rowNumber = $("#upload-table tbody tr").length + 1;
@@ -432,7 +432,17 @@
     }
   }
 </script>
-
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          toastr.{{ category }}("{{ message | safe }}");
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  });
+</script>
 
   
 {% endblock %}

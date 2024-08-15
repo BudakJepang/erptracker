@@ -153,6 +153,9 @@ def user_change_password(id):
     from app import mysql
     cursor = mysql.connection.cursor()
 
+    cursor.execute('SELECT password, sign_path FROM user_accounts WHERE id=%s', (id,))
+    user = cursor.fetchone()
+
     if request.method == 'POST':
         user_id = request.form['user_id']
         username = request.form['username']
@@ -160,36 +163,36 @@ def user_change_password(id):
         current_password = request.form['current_password']
         new_password = request.form['new_password']
         signature = request.files.get('signature')
-        signature_filename = None
 
-        # uploads/img.png (WITH BACKSLASH PATH)
-        if signature and signature.filename != '':
-            signature_filename = secure_filename(signature.filename)
-            signature_path = os.path.join('static/uploads', signature_filename)
-            signature.save(os.path.join(current_app.config['UPLOAD_FOLDER'], signature_filename))
-
-        # img.png (WITHOUT BACKSLASH PATH)
-        # if signature and signature.filename != '':
-        #     signature_filename = secure_filename(signature.filename)
-        #     signature.save(os.path.join(current_app.config['UPLOAD_FOLDER'], signature_filename))
-
-        cursor.execute('SELECT password FROM user_accounts WHERE id=%s', (user_id,))
-        user = cursor.fetchone()
-
+        # Check if the current password is correct
         if user and check_password_hash(user[0], current_password):
+            updates = {
+                "username": username,
+                "email": email,
+                "updated_at": datetime.now()
+            }
+
+            # If a new password is provided, hash it and include it in the update
             if new_password:
-                new_password_hashed = generate_password_hash(new_password)
-                cursor.execute('''
-                    UPDATE user_accounts 
-                    SET username=%s, email=%s, password=%s, updated_at=%s, sign_path=%s 
-                    WHERE id=%s
-                ''', (username, email, new_password_hashed, datetime.now(), signature_path, user_id))
-            else:
-                cursor.execute('''
-                    UPDATE user_accounts 
-                    SET username=%s, email=%s, updated_at=%s, sign_path=%s
-                    WHERE id=%s
-                ''', (username, email, datetime.now(), signature_path, user_id))
+                updates["password"] = generate_password_hash(new_password)
+
+            # If a new signature is uploaded, save it and include the path in the update
+            if signature and signature.filename != '':
+                signature_filename = secure_filename(signature.filename)
+                signature_path = os.path.join('static/uploads', signature_filename)
+                signature.save(os.path.join(current_app.config['UPLOAD_FOLDER'], signature_filename))
+                updates["sign_path"] = signature_path
+
+            # Generate the SQL query dynamically based on what needs to be updated
+            set_clause = ", ".join(f"{key}=%s" for key in updates.keys())
+            values = list(updates.values())
+            values.append(user_id)
+
+            cursor.execute(f'''
+                UPDATE user_accounts 
+                SET {set_clause}
+                WHERE id=%s
+            ''', values)
 
             mysql.connection.commit()
             flash('User updated successfully', 'success')
@@ -202,8 +205,7 @@ def user_change_password(id):
     cursor.execute('SELECT id, username, email, level, sign_path FROM user_accounts WHERE id=%s', (id,))
     user = cursor.fetchone()
     user = list(user)
-    print(f"INI USER USER USER USER SUR {user}")
-    user[4] = user[4].replace("static/","")
+    user[4] = user[4].replace("static/", "")
     cursor.close()
 
     if user is None:
@@ -211,6 +213,7 @@ def user_change_password(id):
         return redirect(url_for('user.list_users'))
 
     return render_template('users/user_change_password.html', user=user)
+
 # ====================================================================================================================================
 
 

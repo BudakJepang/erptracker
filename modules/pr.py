@@ -8,29 +8,126 @@ from functools import wraps
 from io import BytesIO
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, KeepInFrame, Frame
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, KeepInFrame, Frame, PageBreak
+from reportlab.graphics.shapes import Drawing, Line
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
+from reportlab.lib.colors import Color
+# from reportlab.graphics.shapes import Line
+from reportlab.pdfgen import canvas
 from datetime import datetime
 from flask_mysqldb import MySQL, MySQLdb
 from werkzeug.utils import secure_filename
 from PyPDF2 import PdfReader, PdfWriter
 from modules.mail import pr_mail, approval_notification_mail, alert_mail, pr_alert_mail
+from modules.logs import insert_pr_log
+import socket
 
 
 
 # ====================================================================================================================================
 # PR UTILITES
 # ====================================================================================================================================
-# def login_required(f):
-#     @wraps(f)
-#     def decorated_function(*args, **kwargs):
-#         if 'loggedin' not in session:
-#             return redirect(url_for('auth.auth'))
-#         return f(*args, **kwargs)
-#     return decorated_function
 
+# GET USER IP ADDRESS _________________________________________________________________
+device = socket.gethostname()
+ip_address = socket.gethostbyname(device)
+
+# INSERT PR ADD LOGS TABLE  ___________________________________________________________
+def insert_pr_log(no_pr, user_id, status, description, ip_address, today):
+    from app import mysql
+    try:
+        print(f"HALOOOOO OOOOOO OOOOO OOOOO {no_pr} {status} {description}")
+        cur = mysql.connection.cursor()
+        cur.execute(
+            "INSERT INTO pr_logs (no_pr, user_id, status, description, ip_address, created_at) VALUES (%s, %s, %s, %s, %s, %s)",
+            (no_pr, user_id, status, description, ip_address, today)
+        )
+        mysql.connection.commit()
+    except Exception as e:
+        print(f'Error: {str(e)}')
+    finally:
+        cur.close()
+    return "Success insert to log"
+
+def process_and_insert_logs(no_pr, requester_id, ip_address, user_id, functions):
+    from app import mysql
+    from datetime import datetime  # Jangan lupa mengimpor datetime jika belum diimpor
+    cur = mysql.connection.cursor()
+    today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')   
+    
+    if functions == 'submit':
+    
+        log_mail_user = '''
+            SELECT 
+                pa.no_pr,
+                pa.approval_no,
+                pa.approval_user_id,
+                ua.username,
+                ua.email 
+            FROM pr_approval pa 
+            LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
+            WHERE no_pr = %s
+            AND pa.status IS NULL
+            ORDER BY 2 ASC
+        '''
+        cur.execute(log_mail_user, [no_pr])
+        logs_mail = cur.fetchall()
+
+        email_descriptions = []
+        sender_email = 'procurement@byorange.co.id'
+        for log in logs_mail:
+            _, _, _, username, email = log
+            email_descriptions.append(f'{username} ({email})')
+
+        if email_descriptions:
+            # description = f'Sent for signature to {", ".join(email_descriptions)} from {sender_email}'   UNTUK KIRIM MULTIPLE  
+            description = f'Sent for signature to {email_descriptions[0]} from {sender_email}'     
+            insert_pr_log(no_pr, requester_id, "SENT", description, ip_address, today)
+        else:
+            pass
+    
+        # elif email_descriptions_app and functions == 'sign':
+        #     first_email_description_app = email_descriptions_app[0]
+        #     description = f'Sign by {first_email_description_app}'
+        #     insert_pr_log(no_pr, requester_id, "SIGNED", description, ip_address, today)
+    elif functions == 'sign':
+
+        log_mail_user = '''
+            SELECT 
+                pa.no_pr,
+                pa.approval_no,
+                pa.approval_user_id,
+                ua.username,
+                ua.email 
+            FROM pr_approval pa 
+            LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
+            WHERE no_pr = %s
+            and pa.approval_user_id = %s
+            ORDER BY 2 ASC
+        '''
+        cur.execute(log_mail_user, [no_pr, user_id])
+        logs_mail = cur.fetchall()
+
+        email_descriptions_app = []
+        sender_email = 'procurement@byorange.co.id'
+        for log in logs_mail:
+            _, _, _, username, email = log
+            email_descriptions_app.append(f'{username} ({email})')   
+        
+        if email_descriptions_app:
+            first_email_description_app = email_descriptions_app[0]
+            description = f'Sign by {first_email_description_app}'
+            insert_pr_log(no_pr, requester_id, "SIGNED", description, ip_address, today)
+        else:
+            pass
+             
+
+    cur.close()
+
+
+# LOCK ADDRESS LOGIN REQUIRED  ____________________________________________________________
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -181,181 +278,165 @@ def pr_temp_submit():
     approver = cursor.fetchall()
     
     if request.method == 'POST':
-        # VARIABLE PR HEADER
-        entity = request.form['entity']
-        department = request.form['department']
-        no_pr = generate_pr_number(entity, department)
-        tanggal_permintaan = request.form['tanggal_permintaan']
-        requester_name = session.get('username', 'system')  # get the username from session auth
-        requester_id = session.get('id', 'system')  # get id user from session auth
-        total_budget_approved = request.form['total_budget_approved']
-        nama_project = request.form['nama_project']
-        remarks = None
-
-        # VARIABLE FOR AUTO_NUM TABLE
-        current_date = datetime.now()
-        year_month = current_date.strftime('%y%m')
-
-        # INSERT FOR TABLE AUTO NUM
         try:
-            cursor.execute("INSERT INTO pr_autonum (entity, department, month, year, pr_no) VALUES (%s, %s, %s, %s, %s)",
-                       (entity, department, current_date.month, current_date.year, no_pr))
-            mysql.connection.commit()
-        except MySQLdb.IntegrityError as e:
-            if e.args[0] == 1062:  # Duplicate entry error
-                sequence_number = f"{get_next_sequence(entity, department):03d}"
-                pr_number = f"PR-{entity}-{department}-{year_month}-{sequence_number}"
+            # VARIABLE PR HEADER
+            entity = request.form['entity']
+            department = request.form['department']
+            no_pr = generate_pr_number(entity, department)
+            tanggal_permintaan = request.form['tanggal_permintaan']
+            requester_name = session.get('username', 'system')  # get the username from session auth
+            requester_id = session.get('id', 'system')  # get id user from session auth
+            total_budget_approved = request.form['total_budget_approved']
+            nama_project = request.form['nama_project']
+            remarks = None
+
+            # VARIABLE FOR AUTO_NUM TABLE
+            current_date = datetime.now()
+            year_month = current_date.strftime('%y%m')
+
+            # INSERT FOR TABLE AUTO NUM
+            try:
                 cursor.execute("INSERT INTO pr_autonum (entity, department, month, year, pr_no) VALUES (%s, %s, %s, %s, %s)",
-                            (entity, department, current_date.month, current_date.year, pr_number))
+                        (entity, department, current_date.month, current_date.year, no_pr))
+                mysql.connection.commit()
+            except MySQLdb.IntegrityError as e:
+                if e.args[0] == 1062:  # Duplicate entry error
+                    sequence_number = f"{get_next_sequence(entity, department):03d}"
+                    pr_number = f"PR-{entity}-{department}-{year_month}-{sequence_number}"
+                    cursor.execute("INSERT INTO pr_autonum (entity, department, month, year, pr_no) VALUES (%s, %s, %s, %s, %s)",
+                                (entity, department, current_date.month, current_date.year, pr_number))
+                    mysql.connection.commit()
+
+            # ADD CONDITION FOR INSERT TO DB BY entity_id
+            if entity == 'CNI':
+                entity = 1
+            elif entity == 'OID':
+                entity = 2
+            elif entity == 'RKI':
+                entity = 3
+            elif entity == 'DMI':
+                entity = 4
+            elif entity == 'AGI':
+                entity = 5
+            elif entity == 'OPN':
+                entity = 6
+            elif entity == 'ATI':
+                entity = 7
+            elif entity == 'AMP':
+                entity = 8
+            elif entity == 'TKM':
+                entity = 9
+            else:
+                entity = None
+
+            # INSERT INTO TABLE FOR TABLE PR_HEADER
+            insert_header_query = '''
+                    INSERT INTO pr_header 
+                    (no_pr, tanggal_permintaan, requester_id, requester_name, nama_project, entity_id, total_budget_approved, remarks, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            '''
+
+            # EXECUTION QUERY FOR TABLE PR_HEADER
+            today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            cursor.execute(insert_header_query, (no_pr, tanggal_permintaan, requester_id, requester_name, nama_project, entity, total_budget_approved, remarks, today, today))
+            mysql.connection.commit()
+
+            # INSERT INTO TABLE PR_APPROVAL
+            approval_list = []
+            idx = 1
+            today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+            while True:
+                try:
+                    approval_user_id = request.form[f'approval_user_id{idx}']
+                    approval_list.append((no_pr, idx, approval_user_id, None, None, today))
+                    idx += 1
+                except KeyError:
+                    break
+
+            if approval_list:
+                insert_approval_query = '''
+                    INSERT INTO pr_approval (no_pr, approval_no, approval_user_id, status, notes, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                '''
+                cursor.executemany(insert_approval_query, approval_list)
                 mysql.connection.commit()
 
-        # ADD CONDITION FOR INSERT TO DB BY entity_id
-        if entity == 'CNI':
-            entity = 1
-        elif entity == 'OID':
-            entity = 2
-        elif entity == 'RKI':
-            entity = 3
-        elif entity == 'DMI':
-            entity = 4
-        elif entity == 'AGI':
-            entity = 5
-        elif entity == 'OPN':
-            entity = 6
-        elif entity == 'ATI':
-            entity = 7
-        elif entity == 'AMP':
-            entity = 8
-        elif entity == 'TKM':
-            entity = 9
-        else:
-            entity = None
+            
+            # PROVISIONING INSERT INTO TABLE PR_DETAIL
+            items = []
+            index = 1
+            while True:
+                try:
+                    nama_item = request.form[f'nama_item{index}']
+                    spesifikasi = request.form[f'spesifikasi{index}']
+                    qty = request.form[f'qty{index}']
+                    tanggal = request.form[f'tanggal{index}']
+                    items.append((no_pr, index, nama_item, spesifikasi, qty, tanggal, today, today))
+                    index += 1
+                except KeyError:
+                    break
 
-        # INSERT INTO TABLE FOR TABLE PR_HEADER
-        insert_header_query = '''
-                INSERT INTO pr_header 
-                (no_pr, tanggal_permintaan, requester_id, requester_name, nama_project, entity_id, total_budget_approved, remarks, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        '''
+            if items:
+                insert_detail_query = '''
+                    INSERT INTO pr_detail (no_pr, item_no, nama_item, spesifikasi, qty, tanggal, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                '''
+                cursor.executemany(insert_detail_query, items)
+                mysql.connection.commit()
 
-        # EXECUTION QUERY FOR TABLE PR_HEADER
-        today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        cursor.execute(insert_header_query, (no_pr, tanggal_permintaan, requester_id, requester_name, nama_project, entity, total_budget_approved, remarks, today, today))
-        mysql.connection.commit()
 
-        # INSERT INTO TABLE PR_APPROVAL
-        approval_list = []
-        idx = 1
-        today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            # HANDLE FILE UPLOADS
+            upload_files = request.files.getlist('files[]')
+            upload_docs = []
+            for i, file in enumerate(upload_files):
+                if file:
+                    filename = secure_filename(file.filename)
+                    upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                    file.save(upload_path)
+                    relative_path = os.path.relpath(upload_path, 'static')  # UBAH PATHNYA AGAR TIDAK DITULIS STRING static PADA DATABASE
+                    relative_path = relative_path.replace('\\', '/') # RUBAH BACKSLASH MENJADI SLASH KETIKA INSERT KE DATABASE AGAR DAPAT DI VIEW PADA HTML
+                    upload_docs.append((no_pr, filename, relative_path, requester_id, today, requester_id, today))
 
-        while True:
-            try:
-                approval_user_id = request.form[f'approval_user_id{idx}']
-                approval_list.append((no_pr, idx, approval_user_id, None, None, today))
-                idx += 1
-            except KeyError:
-                break
-
-        if approval_list:
-            insert_approval_query = '''
-                INSERT INTO pr_approval (no_pr, approval_no, approval_user_id, status, notes, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
+            if upload_docs:
+                insert_docs_query = '''
+                    INSERT INTO pr_docs_reference (no_pr, doc_name, path, created_by, created_at, updated_by, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                '''
+                cursor.executemany(insert_docs_query, upload_docs)
+                mysql.connection.commit()
+            
+            flash('New PR has been added', 'success')
+            
+            cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+            query_single_mail = '''
+                SELECT 
+                    no_pr,
+                    approval_no,
+                    approval_user_id,
+                    ua.username,
+                    ua.email 
+                FROM pr_approval pa 
+                LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
+                WHERE no_pr = %s
+                ORDER BY 2 ASC
+                LIMIT 1
             '''
-            cursor.executemany(insert_approval_query, approval_list)
-            mysql.connection.commit()
+            cur.execute(query_single_mail, [no_pr])
+            first_approval_mail = cur.fetchone()
+            cur.close()
 
+            mail_approval_recipient = first_approval_mail['email']
+            pr_alert_mail(no_pr, mail_approval_recipient)
+            process_and_insert_logs(no_pr, requester_id, ip_address, None, functions='submit')
+            return redirect(url_for('pr.pr_list'))
         
-        # PROVISIONING INSERT INTO TABLE PR_DETAIL
-        items = []
-        index = 1
-        while True:
-            try:
-                nama_item = request.form[f'nama_item{index}']
-                spesifikasi = request.form[f'spesifikasi{index}']
-                qty = request.form[f'qty{index}']
-                tanggal = request.form[f'tanggal{index}']
-                items.append((no_pr, index, nama_item, spesifikasi, qty, tanggal, today, today))
-                index += 1
-            except KeyError:
-                break
+        except Exception as e:
+            # ROLLBACK QUERY IF THERE IS AN ERROR OCCURE
+            mysql.connection.rollback()
+            flash(f'Error: {str(e)}', 'warning')
+            return redirect(url_for('pr.pr_temp_submit'))
 
-        if items:
-            insert_detail_query = '''
-                INSERT INTO pr_detail (no_pr, item_no, nama_item, spesifikasi, qty, tanggal, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            '''
-            cursor.executemany(insert_detail_query, items)
-            mysql.connection.commit()
-
-
-        # HANDLE FILE UPLOADS
-        upload_files = request.files.getlist('files[]')
-        upload_docs = []
-        for i, file in enumerate(upload_files):
-            if file:
-                filename = secure_filename(file.filename)
-                upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-                file.save(upload_path)
-                relative_path = os.path.relpath(upload_path, 'static')  # UBAH PATHNYA AGAR TIDAK DITULIS STRING static PADA DATABASE
-                relative_path = relative_path.replace('\\', '/') # RUBAH BACKSLASH MENJADI SLASH KETIKA INSERT KE DATABASE AGAR DAPAT DI VIEW PADA HTML
-                upload_docs.append((no_pr, filename, relative_path, requester_id, today, requester_id, today))
-
-        if upload_docs:
-            insert_docs_query = '''
-                INSERT INTO pr_docs_reference (no_pr, doc_name, path, created_by, created_at, updated_by, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            '''
-            cursor.executemany(insert_docs_query, upload_docs)
-            mysql.connection.commit()
-        
-        cursor.close()
-        flash('New PR has been added', 'success')
-
-
-        # MULTIPLE SENT MAIL________________________________________________________________
-        cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-        # query_mail = '''
-        # SELECT 
-        #     no_pr,
-        #     approval_user_id,
-        #     ua.username,
-        #     ua.email 
-        # FROM pr_approval pa 
-        # LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
-        # WHERE no_pr = %s
-        # '''
-        # cur.execute(query_mail, [no_pr])
-        # data_email = cur.fetchall()
-        # cur.close()
-        
-        # emails = [row['email'] for row in data_email if row['email']]
-        # email_list = ', '.join(emails)
-        # pr_alert_mail(no_pr, email_list)
-
-
-        # SINGLE TO FIRST APPROVAL SENT MAIL________________________________________________________________
-        query_single_mail = '''
-            SELECT 
-                no_pr,
-                approval_no,
-                approval_user_id,
-                ua.username,
-                ua.email 
-            FROM pr_approval pa 
-            LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
-            WHERE no_pr = %s
-            ORDER BY 2 ASC
-            LIMIT 1
-        '''
-        cur.execute(query_single_mail, [no_pr])
-        first_approval_mail = cur.fetchone()
-
-        mail_approval_recipient = first_approval_mail['email']
-        pr_alert_mail(no_pr, mail_approval_recipient)
-
-        cur.close()
-
-        return redirect(url_for('pr.pr_list'))
     return render_template('pr/pr_temp.html', pr_number=pr_number, entities=entities, departments=departments, approver=approver)
 # ==========================================================================================================================================
 
@@ -469,7 +550,7 @@ def pr_send_mail_manual(approval_id, no_pr):
         LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id
         WHERE ph.no_pr = %s
         AND pa.approval_user_id = %s
-        GROUP BY 1,2,3,4,5,6,7,8,9,10,11,12
+        GROUP BY 1,2,3,4,5,6,7,8,9,10,11,12,13,14
     """
     cur.execute(query, [no_pr, approval_id])
     data_email = cur.fetchone()
@@ -524,10 +605,9 @@ def send_sequence_mail_pr(no_pr):
     '''
     cur.execute(query, [no_pr])
     data = cur.fetchone()
-    email = data['email']
     cur.close()
 
-    return email
+    return data['email'] if data else None
 
 # APPROVED ____________________________________________________________________________________________________________________________
 @login_required
@@ -555,8 +635,14 @@ def pr_approved(no_pr):
             cur.execute(update_query, (approval_notes, no_pr, approval_user_id))
             mysql.connection.commit()
             mail_next_approval = send_sequence_mail_pr(no_pr)
-            pr_alert_mail(no_pr, mail_next_approval)
 
+            if mail_next_approval:
+                pr_alert_mail(no_pr, mail_next_approval)
+                process_and_insert_logs(no_pr, current_user_id, ip_address, current_user_id, functions='sign')
+                process_and_insert_logs(no_pr, current_user_id, ip_address, current_user_id, functions='submit')
+            else:
+                process_and_insert_logs(no_pr, current_user_id, ip_address, current_user_id, functions='sign')
+                process_and_insert_logs(no_pr, current_user_id, ip_address, current_user_id, functions='submit')
             flash('PR has been APPROVED successfully!', 'success')
 
         except Exception as e:
@@ -985,6 +1071,20 @@ def pr_generate_pdf(no_pr):
 
     pr_documents = cur.fetchall()
 
+    # LOG PR PDF
+    cur.execute('''
+    SELECT 
+        no_pr ,
+        status,
+        description,
+        ip_address ,
+        created_at 
+    FROM pr_logs pl 
+    WHERE no_pr = %s
+    ''', (no_pr, ))
+
+    pr_logs = cur.fetchall()
+
     # MAIN FORM PDF
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4)
@@ -1001,7 +1101,7 @@ def pr_generate_pdf(no_pr):
     lefted_style = ParagraphStyle(name='lefted', alignment=TA_LEFT, fontSize=10, fontName='Helvetica')
     title_style = ParagraphStyle(name='title', alignment=TA_CENTER, fontSize=20, fontName='Helvetica-Bold')
     table_content_style = ParagraphStyle(name='table_content', alignment=TA_CENTER, fontSize=10)
-    table_content_style_left = ParagraphStyle(name='table_content_left', alignment=TA_LEFT, fontSize=10)
+    table_content_style_left = ParagraphStyle(name='table_content_left', alignment=TA_LEFT, fontSize=10, wordWrap='CJK')
     table_header_style = ParagraphStyle(name='table_header', alignment=TA_CENTER, fontSize=10, fontName='Helvetica-Bold')
     footer_style = ParagraphStyle(name='footer', fontSize=10, fontName='Helvetica-Bold')
     name_footer_style = ParagraphStyle(name='footer', fontSize=10, fontName='Helvetica-Bold',  alignment=TA_CENTER)
@@ -1178,6 +1278,83 @@ def pr_generate_pdf(no_pr):
 
     elements.append(table_footer)
     elements.append(Spacer(1, 12))
+
+    # FOR LOGS_____________________________________________________________________________________
+    elements.append(PageBreak())
+    # hex_color = "#e8eefa"
+    # color = Color(*[int(hex_color[i:i+2], 16)/255.0 for i in (1, 3, 5)])
+    table_content_style_left_log = ParagraphStyle(name='table_content_left', alignment=TA_CENTER, fontSize=24)
+
+    left_logo = Image('static/uploads/ale.jpg', width=1*inch, height=1*inch)
+    right_logo = Image('static/uploads/ale.jpg', width=1*inch, height=1*inch)
+    centered_style = ParagraphStyle(name='centered', alignment=1, fontSize=18, fontName='Helvetica-Bold')
+    
+    header_data = [
+        [left_logo, Paragraph('New PDF', centered_style), right_logo]
+    ]
+    header_table = Table(header_data, colWidths=[2.5*inch, 2*inch, 2.5*inch])
+    header_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
+    ]))
+
+    # Tambahkan garis lurus
+    # drawing = Drawing(800, 100)  # width, height
+    # line = Line(-50, 50, 480, 50)  # x1, y1, x2, y2
+    # line.strokeColor = colors.gray  # Set warna garis
+    # drawing.add(line)
+    # elements.append(drawing)
+    # elements.append(Spacer(1, 12))
+    
+    # TITLE LOGS PAGE
+    log_title = Paragraph('Document History', table_content_style_left_log)
+    elements.append(log_title)
+    elements.append(Spacer(1, 28))
+
+    # PR LOGS TABLE HEADER
+    logs_table_header = [
+        # Paragraph('No', table_header_style),
+        Paragraph('Status', table_header_style),
+        Paragraph('Description', table_header_style),
+        Paragraph('IP Address', table_header_style),
+        Paragraph('Datetime', table_header_style)
+    ]
+
+    # Append header to table data
+    logs_table_data = [logs_table_header]
+
+    # Populate the table with pr_logs data
+    for index, log in enumerate(pr_logs):
+        if log[1] == 'SENT':
+            image = Image('static/entity_logo/sent.png', width=50, height=50)
+        else:
+            image = Image('static/entity_logo/signed3.png', width=50, height=50)
+            
+        logs_table_data.append([
+            # Paragraph(str(index + 1), table_content_style),
+            # Image('static/entity_logo/sent.png', width=50, height=50),
+            image,
+            # Paragraph(log[1], table_content_style),
+            Paragraph(log[2], table_content_style_left),
+            Paragraph(log[3], table_content_style),
+            Paragraph(log[4].strftime('%d %b %Y %H:%M:%S'), table_content_style)
+        ])
+
+    # Create table for logs
+    # logs_table = Table(logs_table_data, colWidths=[0.5*inch, 1.5*inch, 2.5*inch, 1.5*inch, 2*inch])
+    logs_table = Table(logs_table_data, colWidths=[1.5*inch, 2.5*inch, 1.5*inch, 2*inch])
+    logs_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.gray),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.white),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # Align content to the top
+    ]))
+    elements.append(logs_table)
+    # END LOGS
 
     doc.build(elements)
     doc.setTitle = "PR"

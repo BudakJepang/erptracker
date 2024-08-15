@@ -8,6 +8,9 @@ from email.mime.base import MIMEBase
 from email import encoders
 from datetime import datetime, timedelta
 import pytz
+# from app import mysql
+from flask_mysqldb import MySQL, MySQLdb
+
 
 # SEND MAIL FOR NEW PR
 def pr_mail(no_pr, email, requestName, approvalName, budget, dueDate, entityName):
@@ -598,3 +601,50 @@ def pr_alert_mail(no_pr, mail_recipient):
     server.quit()
     result = "Sent"
     return result
+
+
+# MULTIPLE SENT MAIL________________________________________________________________
+# cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+# query_mail = '''
+# SELECT 
+#     no_pr,
+#     approval_user_id,
+#     ua.username,
+#     ua.email 
+# FROM pr_approval pa 
+# LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
+# WHERE no_pr = %s
+# '''
+# cur.execute(query_mail, [no_pr])
+# data_email = cur.fetchall()
+# cur.close()
+
+# emails = [row['email'] for row in data_email if row['email']]
+# email_list = ', '.join(emails)
+# pr_alert_mail(no_pr, email_list)
+
+
+# SINGLE TO FIRST APPROVAL SENT MAIL________________________________________________________________
+def send_approval_mail(no_pr):
+    from app import mysql
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    query_single_mail = '''
+        SELECT 
+            no_pr,
+            approval_no,
+            approval_user_id,
+            ua.username,
+            ua.email 
+        FROM pr_approval pa 
+        LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
+        WHERE no_pr = %s
+        ORDER BY 2 ASC
+        LIMIT 1
+    '''
+    cur.execute(query_single_mail, [no_pr])
+    first_approval_mail = cur.fetchone()
+
+    mail_approval_recipient = first_approval_mail['email']
+    pr_alert_mail(no_pr, mail_approval_recipient)
+
+    cur.close()
