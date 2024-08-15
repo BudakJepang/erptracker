@@ -38,7 +38,6 @@ ip_address = socket.gethostbyname(device)
 def insert_pr_log(no_pr, user_id, status, description, ip_address, today):
     from app import mysql
     try:
-        print(f"HALOOOOO OOOOOO OOOOO OOOOO {no_pr} {status} {description}")
         cur = mysql.connection.cursor()
         cur.execute(
             "INSERT INTO pr_logs (no_pr, user_id, status, description, ip_address, created_at) VALUES (%s, %s, %s, %s, %s, %s)",
@@ -110,13 +109,28 @@ def process_and_insert_logs(no_pr, requester_id, ip_address, user_id, functions)
         cur.execute(log_mail_user, [no_pr, user_id])
         logs_mail = cur.fetchall()
 
+        log_compeleted = '''
+            SELECT DISTINCT status
+            FROM pr_approval pa 
+            WHERE no_pr = %s
+            GROUP BY no_pr
+            HAVING COUNT(CASE WHEN status = 'APPROVED' THEN 1 END) = COUNT(*)
+        '''
+        cur.execute(log_compeleted, [no_pr])
+        logs_done = cur.fetchone()
+
         email_descriptions_app = []
         sender_email = 'procurement@byorange.co.id'
         for log in logs_mail:
             _, _, _, username, email = log
             email_descriptions_app.append(f'{username} ({email})')   
         
-        if email_descriptions_app:
+        if email_descriptions_app and logs_done:
+            first_email_description_app = email_descriptions_app[0]
+            description = f'Sign by {first_email_description_app}'
+            insert_pr_log(no_pr, requester_id, "SIGNED", description, ip_address, today)
+            insert_pr_log(no_pr, requester_id, "COMPLETED", "The document has been completed.", ip_address, today)
+        elif email_descriptions_app:
             first_email_description_app = email_descriptions_app[0]
             description = f'Sign by {first_email_description_app}'
             insert_pr_log(no_pr, requester_id, "SIGNED", description, ip_address, today)
@@ -637,7 +651,7 @@ def pr_approved(no_pr):
             mail_next_approval = send_sequence_mail_pr(no_pr)
 
             if mail_next_approval:
-                pr_alert_mail(no_pr, mail_next_approval)
+                # pr_alert_mail(no_pr, mail_next_approval)
                 process_and_insert_logs(no_pr, current_user_id, ip_address, current_user_id, functions='sign')
                 process_and_insert_logs(no_pr, current_user_id, ip_address, current_user_id, functions='submit')
             else:
@@ -1327,9 +1341,10 @@ def pr_generate_pdf(no_pr):
     for index, log in enumerate(pr_logs):
         if log[1] == 'SENT':
             image = Image('static/entity_logo/sent.png', width=50, height=50)
-        else:
+        elif log[1] == 'SIGNED':
             image = Image('static/entity_logo/signed3.png', width=50, height=50)
-            
+        else:
+            image = Image('static/entity_logo/done2.png', width=50, height=50)
         logs_table_data.append([
             # Paragraph(str(index + 1), table_content_style),
             # Image('static/entity_logo/sent.png', width=50, height=50),
