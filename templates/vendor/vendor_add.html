@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}List of Users{% endblock %}
+{% block title %}Add Vendor{% endblock %}
 
 {% block content %}
 
@@ -10,12 +10,12 @@
     <div class="container-fluid">
       <div class="row mb-2">
         <div class="col-sm-6">
-          <h1>Entity Form</h1>
+          <h1>Vendor Form</h1>
         </div>
         <div class="col-sm-6">
           <ol class="breadcrumb float-sm-right">
             <li class="breadcrumb-item"><a href="#">Home</a></li>
-            <li class="breadcrumb-item active">Add Entity</li>
+            <li class="breadcrumb-item active">Add Vendor</li>
           </ol>
         </div>
       </div>
@@ -31,32 +31,40 @@
         <!-- general form elements -->
         <div class="card card-dark">
           <div class="card-header">
-            <h3 class="card-title">Add New Entity</h3>
+            <h3 class="card-title">Add New Vendor</h3>
           </div>
           <!-- /.card-header -->
           <!-- form start -->
-          <form action="{{ url_for('entity.entity_add', entity_id=entity[0] if entity else None) }}" method="POST" enctype="multipart/form-data">
+          <form action="{{ url_for('vendor.vendor_add', vendor_id=vendor['id'] if vendor else None) }}" method="POST">
             <div class="card-body">
               <div class="row">
                 <div class="col-md-3">
                   <div class="form-group">
-                    <label for="entity_code">Entity Code</label>
-                    <input type="text" class="form-control" id="entity_code" name="entity_code" value="{{ entity[1] if entity else '' }}" placeholder="Define Entity Code" required>
+                    <label for="vendor_code">Vendor Name</label>
+                    <input type="text" class="form-control" id="vendor_name" name="vendor_name" value="{{ vendor['vendor_name'] if vendor else '' }}" placeholder="Masukan Nama vendor" required>
                   </div>
                   <div class="form-group">
-                    <label for="entity_name">Entity Name</label>
-                    <input type="text" class="form-control" id="entity_name" name="entity_name" value="{{ entity[2] if entity else '' }}" placeholder="Masukkan Nama Entity" required>
+                    <label for="vendor_name">Address</label>
+                    <textarea class="form-control" rows="3" id="address" name="address" placeholder="Enter ...">{{ vendor['address'] if vendor else '' }}</textarea>
                   </div>
                   <div class="form-group">
-                    <label for="password">Logo</label>
-                    <input type="file" id="logo" name="logo" accept="image/png, image/jpeg">
+                    <label for="vendor_name">Phone Number</label>
+                    <input type="phone" class="form-control" id="contact_person" name="contact_person" value="{{ vendor['contact_person'] if vendor else '' }}" placeholder="Phone Number">
+                  </div>
+                  <div class="form-group">
+                    <label for="vendor_name">Rekening</label>
+                    <input type="number" class="form-control" id="no_rekening" name="no_rekening" value="{{ vendor['no_rekening'] if vendor else '' }}" placeholder="Rekening">
+                  </div>
+                  <div class="form-group">
+                    <label for="vendor_name">Rekening Name</label>
+                    <input type="text" class="form-control" id="bank" name="bank" value="{{ vendor['bank'] if vendor else '' }}" placeholder="Rekening Name">
                   </div>
                 </div>
               </div>
             </div>
             <div class="card-footer">
               <button type="submit" class="btn btn-dark">Save</button>
-              <a href="{{ url_for('entity.entity_list') }}" class="btn btn-danger" title="Back">Cancel</a>
+              <a href="{{ url_for('vendor.vendor_list') }}" class="btn btn-danger" title="Back">Cancel</a>
             </div>
           </form>
         </div>

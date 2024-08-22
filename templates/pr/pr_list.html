@@ -35,7 +35,7 @@
                 <div class="card-header">
                   <h3 class="card-title"></h3>
                   {% if session.level != 4 %}
-                  <a href="{{ url_for('pr.pr_temp_submit') }}" class="btn btn-app bg-default" title="add pr"><i class="fas fa-edit"></i> Add PR</a>
+                  <a href="{{ url_for('pr.pr_add') }}" class="btn btn-app bg-default" title="add pr"><i class="fas fa-edit"></i> Add PR</a>
                   {% endif %}
                   <!-- <button type="button" class="btn btn-app bg-default" title="Search PR By Date" data-toggle="modal" data-target="#modal-PR">
                     <i class="fa fa fa-search"></i>Search PR
@@ -52,24 +52,62 @@
                         <th>Entity</th>
                         <th>PR Date</th>
                         <th>Total Budget</th>
+                        <th>Status</th>
                         <th>Action</th>
                       </tr>
                       </thead>
                       <tbody>
                           {% for data in data %}
                           <tr>
-                            <td>{{ data[0] }}</td>
-                            <td>{{ data[3] }}</td>
-                            <td>{{ data[4] }}</td>
-                            <td>{{ data[6] }}</td>
-                            <td>{{ data[9].strftime('%d-%B-%Y') }}</td>
+                            <td style="text-align: center;">{{ data[0] }}</td>
+                            <td style="text-align: center;">{{ data[3] }}</td>
+                            <td style="text-align: center;">{{ data[4] }}</td>
+                            <td style="text-align: center;">{{ data[6] }}</td>
+                            <td style="text-align: center;">{{ data[9].strftime('%d %B %Y') }}</td>
                             <td style="text-align: right;">{{ "{:,.0f}".format(data[7]) }}</td>
-                            <td>
-                              <a href="{{ url_for('pr.pr_detail_page', no_pr=data[0]) }}" class="btn btn-default btn-sm" title="Detail"><i class="fa fa-info-circle" aria-hidden="true"></i></a>
-                              {% if session.level != 4 %}
-                              <a href="{{ url_for('pr.pr_edit', no_pr=data[0]) }}" class="btn btn-default btn-sm" title="Edit PR"><i class="fa fa-edit" aria-hidden="true"></i></a>
-                              {% endif %}
-                            </td>
+                            <td style="text-align: left; font-weight: bold;">
+                              <ol>
+                              {% set statuses = data[10].split(', ') %}
+                              {% for status in statuses %}
+                                  {% set parts = status.split(': ') %}
+                                  {% set name = parts[0] %}
+                                  {% set status_value = parts[1] %}
+                                  <li>
+                                      <span>{{ name }}: 
+                                          {% if status_value == 'PENDING' %}
+                                              <span class="badge badge-warning">{{ status_value }}</span>
+                                          {% elif status_value == 'APPROVED' %}
+                                              <span class="badge badge-success">{{ status_value }}</span>
+                                          {% elif status_value == 'REJECTED' %}
+                                              <span class="badge badge-danger">{{ status_value }}</span>
+                                          {% else %}
+                                              {{ status_value }}
+                                          {% endif %}
+                                      </span>
+                                  </li>
+                              {% endfor %}
+                              </ol>
+                          </td>
+                          <td>
+                            {% set all_approved = True %}
+                            {% for status in data[10].split(', ') %}
+                                {% set parts = status.split(': ') %}
+                                {% set status_value = parts[1] | trim %}
+                                {% if status_value != 'APPROVED' %}
+                                    {% set all_approved = False %}
+                                {% endif %}
+                            {% endfor %}
+                            
+                            <a href="{{ url_for('pr.pr_detail_page', no_pr=data[0]) }}" class="btn btn-default btn-sm" title="Detail">
+                                <i class="fa fa-info-circle" aria-hidden="true"></i>
+                            </a>
+                            
+                            {% if session.level != 4 and  all_approved%}
+                                <a href="{{ url_for('pr.pr_edit', no_pr=data[0]) }}" class="btn btn-default btn-sm" title="Edit PR">
+                                    <i class="fa fa-edit" aria-hidden="true"></i>
+                                </a>
+                            {% endif %}
+                        </td>
                             <!-- PUT ACTION BUTTON HERE-->
                           </tr>
                           {% endfor %}

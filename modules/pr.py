@@ -57,7 +57,6 @@ def process_and_insert_logs(no_pr, requester_id, ip_address, user_id, functions)
     today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')   
     
     if functions == 'submit':
-    
         log_mail_user = '''
             SELECT 
                 pa.no_pr,
@@ -87,12 +86,7 @@ def process_and_insert_logs(no_pr, requester_id, ip_address, user_id, functions)
         else:
             pass
     
-        # elif email_descriptions_app and functions == 'sign':
-        #     first_email_description_app = email_descriptions_app[0]
-        #     description = f'Sign by {first_email_description_app}'
-        #     insert_pr_log(no_pr, requester_id, "SIGNED", description, ip_address, today)
     elif functions == 'sign':
-
         log_mail_user = '''
             SELECT 
                 pa.no_pr,
@@ -136,6 +130,47 @@ def process_and_insert_logs(no_pr, requester_id, ip_address, user_id, functions)
             insert_pr_log(no_pr, requester_id, "SIGNED", description, ip_address, today)
         else:
             pass
+
+    elif functions == 'rejected':
+        log_mail_user = '''
+            SELECT 
+                pa.no_pr,
+                pa.approval_no,
+                pa.approval_user_id,
+                ua.username,
+                ua.email 
+            FROM pr_approval pa 
+            LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
+            WHERE no_pr = %s
+            and pa.approval_user_id = %s
+            ORDER BY 2 ASC
+        '''
+        cur.execute(log_mail_user, [no_pr, user_id])
+        logs_mail = cur.fetchall()
+
+        log_compeleted = '''
+            SELECT DISTINCT status
+            FROM pr_approval pa 
+            WHERE no_pr = %s
+            AND status = 'REJECTED'
+        '''
+        cur.execute(log_compeleted, [no_pr])
+        logs_done = cur.fetchone()
+
+        email_descriptions_app = []
+        for log in logs_mail:
+            _, _, _, username, email = log
+            email_descriptions_app.append(f'{username} ({email})')   
+        
+        if email_descriptions_app:
+            first_email_description_app = email_descriptions_app[0]
+            description = f'The document has been rejected by {first_email_description_app}'
+            insert_pr_log(no_pr, requester_id, "REJECTED", description, ip_address, today)
+        else:
+            pass
+
+    else:
+        pass
              
 
     cur.close()
@@ -174,9 +209,9 @@ def pr_list():
     try:
         cursor = mysql.connection.cursor()
         query = '''
-        SELECT DISTINCT 
+        SELECT DISTINCT
             ph.no_pr,
-            DATE(ph.tanggal_permintaan)tanggal_permintaan,
+            DATE(ph.tanggal_permintaan) AS tanggal_permintaan,
             ph.requester_id,
             ph.requester_name,
             ph.nama_project,
@@ -184,19 +219,22 @@ def pr_list():
             e.entity_name,
             ph.total_budget_approved,
             ph.remarks,
-            ph.created_at
+            ph.created_at,
+        GROUP_CONCAT(CONCAT(ua.username, ': ', IFNULL(pa.status, 'PENDING')) ORDER BY pa.approval_no  SEPARATOR ', ') AS status
         FROM pr_header ph 
         LEFT JOIN pr_detail pd ON ph.no_pr = pd.no_pr 
         LEFT JOIN pr_approval pa ON ph.no_pr = pa.no_pr 
         LEFT JOIN entity e ON ph.entity_id = e.id
-        WHERE ph.entity_id IN (
-        SELECT DISTINCT entity_id
-        FROM user_entity WHERE user_id = %s
+        LEFT JOIN user_accounts ua ON pa.approval_user_id  = ua.id
+        WHERE ph.no_pr IN (
+            SELECT DISTINCT pa_inner.no_pr 
+            FROM pr_approval pa_inner 
+            WHERE pa_inner.approval_user_id = %s or ph.requester_id = %s
         )
-        AND (ph.requester_id = %s OR pa.approval_user_id = %s)
-        ORDER BY 9 ASC
+        GROUP BY ph.no_pr
+        ORDER BY ph.created_at ASC
         '''
-        cursor.execute(query, (user_id, user_id, user_id))
+        cursor.execute(query, (user_id, user_id))
         data = cursor.fetchall()
 
         query_app = "SELECT status FROM pr_approval"
@@ -262,9 +300,9 @@ def generate_pr():
 
 
 # MAIN PR SUBMIT_________________________________________________________________
-@pr_blueprint.route('/pr_temp_submit', methods=['GET', 'POST'])
+@pr_blueprint.route('/pr_add', methods=['GET', 'POST'])
 @login_required
-def pr_temp_submit():
+def pr_add():
     pr_number = None
 
     # GET ENTITY AND DEPARTMENT
@@ -293,6 +331,9 @@ def pr_temp_submit():
     
     if request.method == 'POST':
         try:
+            # START HAPPY QUERY
+            mysql.connection.begin()
+
             # VARIABLE PR HEADER
             entity = request.form['entity']
             department = request.form['department']
@@ -312,14 +353,14 @@ def pr_temp_submit():
             try:
                 cursor.execute("INSERT INTO pr_autonum (entity, department, month, year, pr_no) VALUES (%s, %s, %s, %s, %s)",
                         (entity, department, current_date.month, current_date.year, no_pr))
-                mysql.connection.commit()
+                # mysql.connection.commit()
             except MySQLdb.IntegrityError as e:
                 if e.args[0] == 1062:  # Duplicate entry error
                     sequence_number = f"{get_next_sequence(entity, department):03d}"
                     pr_number = f"PR-{entity}-{department}-{year_month}-{sequence_number}"
                     cursor.execute("INSERT INTO pr_autonum (entity, department, month, year, pr_no) VALUES (%s, %s, %s, %s, %s)",
                                 (entity, department, current_date.month, current_date.year, pr_number))
-                    mysql.connection.commit()
+                    # mysql.connection.commit()
 
             # ADD CONDITION FOR INSERT TO DB BY entity_id
             if entity == 'CNI':
@@ -353,7 +394,7 @@ def pr_temp_submit():
             # EXECUTION QUERY FOR TABLE PR_HEADER
             today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             cursor.execute(insert_header_query, (no_pr, tanggal_permintaan, requester_id, requester_name, nama_project, entity, total_budget_approved, remarks, today, today))
-            mysql.connection.commit()
+            # mysql.connection.commit()
 
             # INSERT INTO TABLE PR_APPROVAL
             approval_list = []
@@ -374,7 +415,7 @@ def pr_temp_submit():
                     VALUES (%s, %s, %s, %s, %s, %s)
                 '''
                 cursor.executemany(insert_approval_query, approval_list)
-                mysql.connection.commit()
+                # mysql.connection.commit()
 
             
             # PROVISIONING INSERT INTO TABLE PR_DETAIL
@@ -397,7 +438,7 @@ def pr_temp_submit():
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 '''
                 cursor.executemany(insert_detail_query, items)
-                mysql.connection.commit()
+                # mysql.connection.commit()
 
 
             # HANDLE FILE UPLOADS
@@ -418,9 +459,12 @@ def pr_temp_submit():
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
                 '''
                 cursor.executemany(insert_docs_query, upload_docs)
-                mysql.connection.commit()
+                # mysql.connection.commit()
+
+            # COMMIT ALL QUERY EXECUTION
+            mysql.connection.commit()
             
-            flash('New PR has been added', 'success')
+            flash('New PR has been added', 'danger')
             
             cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
             query_single_mail = '''
@@ -448,10 +492,11 @@ def pr_temp_submit():
         except Exception as e:
             # ROLLBACK QUERY IF THERE IS AN ERROR OCCURE
             mysql.connection.rollback()
-            flash(f'Error: {str(e)}', 'warning')
-            return redirect(url_for('pr.pr_temp_submit'))
+            # flash(f'Error: {str(e)}', 'warning')
+            flash(f'ERROR PR Failed', 'warning')
+            return redirect(url_for('pr.pr_add'))
 
-    return render_template('pr/pr_temp.html', pr_number=pr_number, entities=entities, departments=departments, approver=approver)
+    return render_template('pr/pr_add.html', pr_number=pr_number, entities=entities, departments=departments, approver=approver)
 # ==========================================================================================================================================
 
 
@@ -467,7 +512,7 @@ import logging
 
 
 # ====================================================================================================================================
-# PT DETAIL
+# PR DETAIL
 # ====================================================================================================================================
 @pr_blueprint.route('/pr_detail_page/<no_pr>', methods=['GET', 'POST'])
 @login_required
@@ -477,6 +522,7 @@ def pr_detail_page(no_pr):
 
     # GET USER_ID FROM LOGIN SESSION
     current_user_id = session.get('id', 'system')
+    # encrypted_no_pr = encrypt_no_pr(no_pr)
 
     # QUERY LIST FOR PR_HEADER DATA___________________________________________________
     query = """
@@ -532,7 +578,7 @@ def pr_detail_page(no_pr):
 # ====================================================================================================================================
 
 # ====================================================================================================================================
-# PT DETAIL MANUAL SEND MAIL
+# PR DETAIL MANUAL SEND MAIL
 # ====================================================================================================================================
 @pr_blueprint.route('/pr_send_mail_manual/<approval_id>/<no_pr>', methods=['GET', 'POST'])
 @login_required
@@ -657,7 +703,7 @@ def pr_approved(no_pr):
             else:
                 process_and_insert_logs(no_pr, current_user_id, ip_address, current_user_id, functions='sign')
                 process_and_insert_logs(no_pr, current_user_id, ip_address, current_user_id, functions='submit')
-            flash('PR has been APPROVED successfully!', 'success')
+            flash('PR has been APPROVED!', 'success')
 
         except Exception as e:
             mysql.connection.rollback()
@@ -691,14 +737,15 @@ def pr_rejected(no_pr):
         try:
             cur.execute(update_query, (approval_notes, no_pr, approval_user_id))
             mysql.connection.commit()
-            email = 'rohmankpai@gmail.com'
-            requestName = 'Mohammad Nurohman'
-            approvalName = 'David Irwan'
-            entityName = 'PT. ORANGE INOVASI DIGITAL'
-            budget = "2000000"
-            dueDate = '2024-08-01'
+            # email = 'rohmankpai@gmail.com'
+            # requestName = 'Mohammad Nurohman'
+            # approvalName = 'David Irwan'
+            # entityName = 'PT. ORANGE INOVASI DIGITAL'
+            # budget = "2000000"
+            # dueDate = '2024-08-01'
             # pr_mail(no_pr, email, requestName, approvalName, budget, dueDate, entityName)
-            flash('PR has been REJECTED successfully!', 'success')
+            process_and_insert_logs(no_pr, current_user_id, ip_address, current_user_id, functions='rejected')
+            flash('PR has been REJECTED!', 'success')
 
         except Exception as e:
             mysql.connection.rollback()
@@ -1312,7 +1359,7 @@ def pr_generate_pdf(no_pr):
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
     ]))
 
-    # Tambahkan garis lurus
+    # CREATE LINE
     # drawing = Drawing(800, 100)  # width, height
     # line = Line(-50, 50, 480, 50)  # x1, y1, x2, y2
     # line.strokeColor = colors.gray  # Set warna garis
@@ -1343,6 +1390,8 @@ def pr_generate_pdf(no_pr):
             image = Image('static/entity_logo/sent.png', width=50, height=50)
         elif log[1] == 'SIGNED':
             image = Image('static/entity_logo/signed3.png', width=50, height=50)
+        elif log[1] == 'REJECTED':
+            image = Image('static/entity_logo/rejection.png', width=50, height=50)
         else:
             image = Image('static/entity_logo/done2.png', width=50, height=50)
         logs_table_data.append([

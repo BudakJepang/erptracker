@@ -54,7 +54,7 @@
                           <tr>
                             <td>{{ data[1] }}</td>
                             <td>{{ data[2] }}</td>
-                            <td>{{ data[3] }}</td>
+                            <td style="text-align: center;">{% if data[3] %}<img src="{{ url_for('static', filename=data[3], alt=data[3]) }}" class="img-fluid mb-2" style="width: 70px;" />{% else %} mana logo nya? {% endif %}</td>
                             <td>
                               <a href="{{ url_for('entity.entity_add', entity_id=data[0]) }}" class="btn btn-default btn-sm" title="Edit PR"><i class="fa fa-edit" aria-hidden="true"></i></a>
                             </td>
@@ -86,7 +86,7 @@
         {% endfor %}
       {% endif %}
     {% endwith %}
-  });
+  }); 
 </script>
 
 {% endblock %}

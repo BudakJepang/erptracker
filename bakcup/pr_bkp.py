@@ -2816,3 +2816,42 @@ def test_mail(no_pr):
     
     return email_list
 # ====================================================================================================================================
+
+# QUERY PR END STATUS
+QUERY = '''
+ SELECT DISTINCT
+                ph.no_pr,
+                DATE(ph.tanggal_permintaan) AS tanggal_permintaan,
+                ph.requester_id,
+                ph.requester_name,
+                ph.nama_project,
+                ph.entity_id,
+                e.entity_name,
+                ph.total_budget_approved,
+                ph.remarks,
+                ph.created_at,
+                pa.status
+            FROM pr_header ph
+            LEFT JOIN pr_detail pd ON ph.no_pr = pd.no_pr 
+            LEFT JOIN (
+                SELECT pa1.no_pr, pa1.status, pa1.approval_user_id
+                FROM pr_approval pa1
+                INNER JOIN (
+                    SELECT no_pr, MAX(approval_no) AS max_approval_no
+                    FROM pr_approval
+                    GROUP BY no_pr
+                ) pa2 ON pa1.no_pr = pa2.no_pr AND pa1.approval_no = pa2.max_approval_no
+            ) pa ON ph.no_pr = pa.no_pr
+            LEFT JOIN entity e ON ph.entity_id = e.id
+            WHERE ph.entity_id IN (
+                SELECT DISTINCT entity_id
+                FROM user_entity 
+                WHERE user_id = %s
+            )
+            AND (ph.requester_id = %s OR pa.approval_user_id = %s OR ph.no_pr IN (
+                SELECT no_pr 
+                FROM pr_approval 
+                WHERE approval_user_id = %s
+            ))
+            ORDER BY ph.created_at DESC;
+'''

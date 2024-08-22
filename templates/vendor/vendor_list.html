@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+<!-- INHERETENCE SIDEBAR -->
+
+<!--END INHERETENCE SIDEBAR -->
+
+<!-- INHERETENCE CONTENT -->
+{% block content %}
+
+<!--Content Wrapper. Contains page content -->
+<div class="content-wrapper">
+    <!-- Content Header (Page header) -->
+    <section class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1>Master Vendor</h1>
+          </div>
+          <div class="col-sm-6">
+            <ol class="breadcrumb float-sm-right">
+              <li class="breadcrumb-item"><a href="#">Home</a></li>
+              <li class="breadcrumb-item active">Vendor</li>
+            </ol>
+          </div>
+        </div>
+      </div><!-- /.container-fluid -->
+    </section>
+
+    <!-- Main content -->
+    <section class="content">
+        <div class="container-fluid">
+          <div class="row">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title"></h3>
+                    {% if session.level != 4 %}
+                    <a href="{{ url_for('vendor.vendor_add') }}" class="btn btn-app bg-default" title="Add Entity"><i class="fas fa-edit"></i>Add Vendor</a>
+                    {% endif %}
+                  </div>
+                <!-- /.card-header -->
+                <div class="card-body">
+                  <table id="example1" class="table table-bordered table-striped">
+                    <thead>
+                    <tr style="text-align: center;">
+                        <th style="width: 200px;">Vendor Name</th>
+                        <th>Vendor Address</th>
+                        <th style="width: 130px;">Phone Number</th>
+                        <th style="width: 130px;">No. Rek</th>
+                        <th style="width: 100px;">Bank</th>
+                        <th style="width: 100px;">Action</th>
+                      </tr>
+                      </thead>
+                      <tbody>
+                          {% for data in vendor %}
+                          <tr>
+                            <td>{{ data['vendor_name'] }}</td>
+                            <td>{{ data['address'] }}</td>
+                            <td>{{ data['contact_person'] }}</td>
+                            <td>{{ data['no_rekening'] }}</td>
+                            <td>{{ data['bank'] }}</td>
+                            <td>
+                                <a href="{{ url_for('vendor.vendor_add', vendor_id=data['id']) }}" class="btn btn-default btn-sm" title="Edit PR"><i class="fa fa-edit" aria-hidden="true"></i></a>
+                                <a href="{{ url_for('vendor.delete_vendor', id=data['id']) }}" class="btn btn-default btn-sm" title="Edit PR"><i class="fa fa-trash" aria-hidden="true"></i></a>
+                                <button type="button" class="btn btn-outline-danger btn-sm" title="Delete User" data-toggle="modal" data-target="#modal-danger" data-id="{{ data['id'] }}" data-vendor_name="{{ data['vendor_name'] }}">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </td>
+                            <!-- PUT ACTION BUTTON HERE-->
+                          </tr>
+                          {% endfor %}
+                </table>
+              </div>
+              <!-- /.card-body -->
+            </div>
+            <!-- /.card -->
+          </div>
+          <!-- /.col -->
+        </div>
+        <!-- /.row -->
+      </div>
+      <!-- /.container-fluid -->
+    </section>
+    <!-- /.content -->
+  </div>
+  <!-- /.content-wrapper -->
+
+<!-- DELETE MODAL -->
+<div class="modal fade" id="modal-danger" tabindex="-1" role="dialog" aria-labelledby="modal-danger-label" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content bg-danger">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-danger-label">Confirm Delete</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete the following vendor?</p>
+          <ul>
+            <li><strong>Vendor Name:</strong> <span id="modal-vendor_name"></span></li>
+          </ul>
+        </div>
+        <div class="modal-footer">
+          <form id="delete-form" action="" method="post">
+            <input type="hidden" name="id" id="modal-vendor-id">
+            <button type="button" class="btn btn-outline-light" data-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-outline-light">Delete</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+   <!-- DELETE MODAL -->
+  
+  <!-- jQuery for get data from db-->
+  <script src="static/plugins/jquery/jquery.min.js"></script><!-- Bootstrap JS -->
+  <script src="static/plugins/bootstrap/js/bootstrap.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            toastr["{{ category }}"]("{{ message | safe }}");
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    });
+  
+    $('#modal-danger').on('show.bs.modal', function (event) {
+      var button = $(event.relatedTarget); // Button that triggered the modal
+      var userId = button.data('id');
+      var username = button.data('vendor_name');
+  
+      var modal = $(this);
+      modal.find('#modal-vendor-id').val(userId);
+      modal.find('#modal-vendor_name').text(vendor_name);
+
+  
+      // Construct the form action URL with the user ID
+      var formAction = "{{ url_for('vendor.delete_vendor', id=0) }}".replace('0', userId);
+      modal.find('#delete-form').attr('action', formAction);
+    });
+  </script>
+  
+  {% endblock %}
+  <!-- END INHERETENCE CONTENT -->
