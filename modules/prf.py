@@ -41,8 +41,21 @@ def login_required(f):
 prf_blueprint = Blueprint('prf', __name__)
 # ====================================================================================================================================
 
+
+# LIST
 @prf_blueprint.route('/prf_list')
 @login_required
 def prf_list():
     from app import mysql
     return render_template('prf/prf_list.html')
+
+# PRF ADD
+@prf_blueprint.route('/prf_add', methods = ['POST', 'GET'])
+@login_required
+def prf_add():
+    prf_number = None
+    from app import mysql
+
+    user_entities = session.get('entities', [])
+
+    return render_template('prf/prf_add.html')

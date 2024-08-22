@@ -48,7 +48,7 @@
                         <th style="width: 130px;">Phone Number</th>
                         <th style="width: 130px;">No. Rek</th>
                         <th style="width: 100px;">Bank</th>
-                        <th style="width: 100px;">Action</th>
+                        <th style="width: 80px;">Action</th>
                       </tr>
                       </thead>
                       <tbody>
@@ -61,7 +61,6 @@
                             <td>{{ data['bank'] }}</td>
                             <td>
                                 <a href="{{ url_for('vendor.vendor_add', vendor_id=data['id']) }}" class="btn btn-default btn-sm" title="Edit PR"><i class="fa fa-edit" aria-hidden="true"></i></a>
-                                <a href="{{ url_for('vendor.delete_vendor', id=data['id']) }}" class="btn btn-default btn-sm" title="Edit PR"><i class="fa fa-trash" aria-hidden="true"></i></a>
                                 <button type="button" class="btn btn-outline-danger btn-sm" title="Delete User" data-toggle="modal" data-target="#modal-danger" data-id="{{ data['id'] }}" data-vendor_name="{{ data['vendor_name'] }}">
                                     <i class="fa fa-trash"></i>
                                 </button>
@@ -130,7 +129,7 @@
     $('#modal-danger').on('show.bs.modal', function (event) {
       var button = $(event.relatedTarget); // Button that triggered the modal
       var userId = button.data('id');
-      var username = button.data('vendor_name');
+      var vendor_name = button.data('vendor_name');
   
       var modal = $(this);
       modal.find('#modal-vendor-id').val(userId);
