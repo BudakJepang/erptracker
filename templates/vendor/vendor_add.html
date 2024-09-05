@@ -44,6 +44,10 @@
                     <input type="text" class="form-control" id="vendor_name" name="vendor_name" value="{{ vendor['vendor_name'] if vendor else '' }}" placeholder="Masukan Nama vendor" required>
                   </div>
                   <div class="form-group">
+                    <label for="benefeciery_name">Benefeciery Name</label>
+                    <input type="text" class="form-control" id="benefeciery_name" name="benefeciery_name" value="{{ vendor['benefeciery_name'] if vendor else '' }}" placeholder="Masukan Benefeciery Name" required>
+                  </div>
+                  <div class="form-group">
                     <label for="vendor_name">Address</label>
                     <textarea class="form-control" rows="3" id="address" name="address" placeholder="Enter ...">{{ vendor['address'] if vendor else '' }}</textarea>
                   </div>

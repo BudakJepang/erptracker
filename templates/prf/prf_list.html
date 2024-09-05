@@ -35,7 +35,7 @@
                 <div class="card-header">
                   <h3 class="card-title"></h3>
                   {% if session.level != 4 %}
-                  <a href="{{ url_for('prf.prf_add') }}" class="btn btn-app bg-default" title="add pr"><i class="fas fa-edit"></i> Add PR</a>
+                  <a href="{{ url_for('prf.prf_add') }}" class="btn btn-app bg-default" title="add pr"><i class="fas fa-edit"></i> Add PRF</a>
                   {% endif %}
                   <!-- <button type="button" class="btn btn-app bg-default" title="Search PR By Date" data-toggle="modal" data-target="#modal-PR">
                     <i class="fa fa fa-search"></i>Search PR
@@ -46,18 +46,60 @@
                   <table id="example1" class="table table-bordered table-striped">
                     <thead>
                     <tr style="text-align: center;">
-                        <th style="width: 130px;">No PRF</th>
+                        <th style="width: 150px;">No PRF</th>
+                        <th>Vendor</th>
                         <th>Requester</th>
-                        <th>Project Name</th>
-                        <th>Entity</th>
-                        <th>PR Date</th>
-                        <th>Total Budget</th>
+                        <th>Department</th>
+                        <th>PRF Date</th>
+                        <th>Currency</th>
+                        <th>Amount</th>
                         <th>Status</th>
                         <th>Action</th>
                       </tr>
                       </thead>
                       <tbody>
-                         
+                         {% for data in data %}
+                         <tr>
+                          <td style="text-align: center;">{{ data['no_prf']}}</td>
+                          <td style="text-align: left;">{{ data['vendor_name']}}</td>
+                          <td style="text-align: center;">{{ data['username']}}</td>
+                          <td style="text-align: center;">{{ data['departement_name']}}</td>
+                          <td style="text-align: center;">{{ data['request_date']}}</td>
+                          <td style="text-align: center;">{{ data['currency']}}</td>
+                          <td style="text-align: right;">{{ "{:,.2f}".format(data['amount']) }}</td>
+                          <td style="text-align: left; font-weight: bold;">
+                            <ol>
+                            {% set statuses = data['status'].split(', ') %}
+                            {% for status in statuses %}
+                                {% set parts = status.split(': ') %}
+                                {% set name = parts[0] %}
+                                {% set status_value = parts[1] %}
+                                <li>
+                                    <span>{{ name }}: 
+                                        {% if status_value == 'PENDING' %}
+                                            <span class="badge badge-warning">{{ status_value }}</span>
+                                        {% elif status_value == 'APPROVED' %}
+                                            <span class="badge badge-success">{{ status_value }}</span>
+                                        {% elif status_value == 'REJECTED' %}
+                                            <span class="badge badge-danger">{{ status_value }}</span>
+                                        {% else %}
+                                            {{ status_value }}
+                                        {% endif %}
+                                    </span>
+                                </li>
+                            {% endfor %}
+                            </ol>
+                        </td>
+                        <td>
+                          <a href="{{ url_for('prf.prf_detail', no_prf = data['no_prf']) }}" class="btn btn-default btn-sm" title="Detail">
+                            <i class="fa fa-info-circle" aria-hidden="true"></i>
+                        </a>
+                            <a href="{{ url_for('prf.prf_edit', no_prf = data['no_prf']) }}" class="btn btn-default btn-sm" title="Edit PR">
+                                <i class="fa fa-edit" aria-hidden="true"></i>
+                            </a>
+                        </td>
+                         {% endfor %}
+                         </tr>
                 </table>
               </div>
               <!-- /.card-body -->

@@ -2737,6 +2737,78 @@ def pr_generate_pdf(no_pr):
 
     # return send_file(buffer, as_attachment=False, download_name=f'{no_pr}_{today}.pdf', mimetype='application/pdf')
     return send_file(combined_buffer, as_attachment=False, download_name=f'{no_pr}_{today}.pdf', mimetype='application/pdf')
+
+
+# NEW PRF
+@prf_blueprint.route('/prf_generate_pdf/<no_prf>', methods=['GET', 'POST'])
+@login_required
+def prf_generate_pdf(no_prf):
+    from app import mysql
+    cur = mysql.connection.cursor()
+
+    current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    user_id = session.get('id', 'system')
+
+    cur.execute('''
+        SELECT DISTINCT 
+            no_prf,
+            vendor_name,
+            ua.username,
+            beneficiary_name,
+            beneficiary_bank_name,
+            beneficiary_bank_number_account,
+            swift_code_bank,
+            currency,
+            amount,
+            d.departement_name,
+            supporting_doc_aggreement,
+            supporting_doc_quotation,
+            supporting_doc_purchase,
+            supporting_doc_invoice,
+            supporting_doc_faktur_pajak,
+            supporting_doc_other,
+            description,
+            request_date,
+            c.symbol,
+            requester_user_id
+        FROM prf_header ph 
+        LEFT JOIN user_accounts ua ON ph.requester_user_id = ua.id 
+        LEFT JOIN departement d ON ph.department = d.departement
+        LEFT JOIN currency c ON ph.currency = c.iso_code 
+        WHERE no_prf = %s
+    ''', (no_prf, ))
+
+    prf_header = cur.fetchone()
+
+    # PDF generation
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # CUSTOM STYLE
+    centered_style = ParagraphStyle(name='centered', alignment=TA_CENTER, fontSize=10, fontName='Helvetica')
+    title_style = ParagraphStyle(name='title', alignment=TA_CENTER, fontSize=20, fontName='Helvetica-Bold')
+
+    # Title
+    title = Paragraph('Payment Request Form', title_style)
+    elements.append(title)
+    elements.append(Spacer(1, 15))
+
+    # Example Content
+    if prf_header:
+        vendor_name = Paragraph(f"Vendor Name: {prf_header[0]}", centered_style)
+        amount = Paragraph(f"Amount: {prf_header[1]} {prf_header[2]}", centered_style)
+        elements.append(vendor_name)
+        elements.append(Spacer(1, 12))
+        elements.append(amount)
+    
+    # Build the PDF
+    doc.build(elements)
+    buffer.seek(0)
+
+    # Send the generated PDF
+    return send_file(buffer, as_attachment=False, download_name=f'{no_prf}_{current_datetime}.pdf', mimetype='application/pdf')
 # ========================================================================================================================================
 
 

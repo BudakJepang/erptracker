@@ -14,7 +14,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', (event) => {
-      const input = document.getElementById('total_budget_approved');
+      const input = document.getElementById('amount');
 
       input.addEventListener('input', (e) => {
           let value = input.value.replace(/,/g, '');
@@ -61,7 +61,7 @@
             <h3 class="card-title">PRF INPUT</h3>
           </div>
           <div class="card-body">
-            <form action="{{ url_for('pr.pr_add') }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ url_for('prf.prf_add') }}" method="POST" enctype="multipart/form-data">
               <div class="row">
                 <div class="col-sm-3">
                   <div class="form-group">
@@ -87,8 +87,8 @@
                 </div>
                 <div class="col-sm-3">
                   <div class="form-group">
-                    <label for="no_pr">Nomor PR</label>
-                    <input type="text" name="no_pr" id="no_pr" class="form-control" disabled>
+                    <label for="no_prf">Nomor PRF</label>
+                    <input type="text" name="no_prf" id="no_prf" class="form-control" disabled>
                   </div>
                 </div>
               </div>
@@ -97,51 +97,55 @@
                   <div class="form-group">
                     <label>Date</label>
                     <div class="input-group date" id="reservationdate" data-target-input="nearest">
-                      <input type="date" name="tanggal_permintaan" class="form-control" />
+                      <input type="date" name="request_date" class="form-control" />
                       <div class="input-group-append" data-target="#reservationdate" data-toggle="">
                         <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                       </div>
                     </div>
                   </div>
                   <div class="form-group">
-                    <label>Vendor</label>
-                    <select class="form-control select2bs4" name="department" id="department" style="width: 100%;" required>
-                      <option value="">Select Vendor ...</option>
-                      {% for department in departments %}
-                      <option value="{{ department[2] }}" data-entity-id="{{ department[1] }}">{{ department[3] }}</option>
-                      {% endfor %}
+                    <label for="vendor_name">Vendor</label>
+                    <select class="form-control select2bs4" name="vendor_name" id="vendor_name" style="width: 100%;" required>
+                        <option value="">Select Vendor ...</option>
+                        {% for vendor in vendors %}
+                        <option value="{{ vendor[0] }}" data-beneficiary-name="{{ vendor[1] }}" data-bank="{{ vendor[2] }}" data-no-rekening="{{ vendor[3] }}">
+                            {{ vendor[0] }}
+                        </option>
+                        {% endfor %}
                     </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="beneficiary_name">Benefeciery Name</label>
+                    <input class="form-control" type="text" id="beneficiary_name" name="beneficiary_name" placeholder="Auto fill by select vendor ..." required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="beneficiary_bank_name">Benefeciery Bank Name</label>
+                    <input class="form-control" type="text" id="beneficiary_bank_name" name="beneficiary_bank_name" placeholder="Auto fill by select vendor ..." required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="beneficiary_bank_number_account">Benefeciery Bank Number Account</label>
+                    <input class="form-control" type="text" id="beneficiary_bank_number_account" name="beneficiary_bank_number_account" placeholder="Auto fill by select vendor ..." required>
+                </div>
+                  <div class="form-group">
+                    <label for="swift_code_bank">Swift Code Bank</label>
+                    <input class="form-control" type="text" id="swift_code_bank" name="swift_code_bank" placeholder="Enter ...">
                   </div>
                   <div class="form-group">
-                    <label for="total_budget_approved">Benefeciery Name</label>
-                    <input class="form-control" type="text" id="total_budget_approved" name="total_budget_approved" required>
-                  </div>
-                  <div class="form-group">
-                    <label for="total_budget_approved">Benefeciery Bank Name</label>
-                    <input class="form-control" type="text" id="total_budget_approved" name="total_budget_approved" required>
-                  </div>
-                  <div class="form-group">
-                    <label for="total_budget_approved">Benefeciery Bank Number Account</label>
-                    <input class="form-control" type="text" id="total_budget_approved" name="total_budget_approved" required>
-                  </div>
-                  <div class="form-group">
-                    <label for="total_budget_approved">Swift Code Bank</label>
-                    <input class="form-control" type="text" id="total_budget_approved" name="total_budget_approved" required>
-                  </div>
-                  <div class="form-group">
-                    <label for="total_budget_approved">Currency and Amount</label>
-                    <input class="form-control" type="text" id="total_budget_approved" name="total_budget_approved" required>
-                  </div>
-                  <div class="form-group">
-                    <label for="total_budget_approved">Department</label>
-                    <label>Vendor</label>
-                    <select class="form-control select2bs4" name="department" id="department" style="width: 100%;" required>
-                      <option value="">Select Vendor ...</option>
-                      {% for department in departments %}
-                      <option value="{{ department[2] }}" data-entity-id="{{ department[1] }}">{{ department[3] }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
+                    <label>Currency & Amount</label>
+                    <div class="d-flex">
+                        <select class="form-control select2bs4" name="currency" id="currency" style="width: 120px; margin-right: 10px;" required>
+                            <option value="">Select...</option>
+                            {% for currency in currencies %}
+                            <option value="{{ currency[1] }}" data-entity-id="{{ currency[0] }}">{{ currency[0] }} ({{ currency[1] }})</option>
+                            {% endfor %}
+                        </select>
+                        <input class="form-control" type="text" id="amount" name="amount" style="width: 350px; margin-left: 5px;" placeholder="0" required>
+                    </div>
+                </div>
+
                 </div>
               </div>
 
@@ -154,35 +158,35 @@
                   <div style="margin-bottom: 10px;">
                   </div>
                   <div class="form-group">
-                    <label for="total_budget_approved">Agreement</label>
-                    <input class="form-control" type="text" id="total_budget_approved" name="total_budget_approved" required style="width: 420px;">
+                    <label for="supporting_doc_aggreement">Agreement</label>
+                    <input class="form-control" type="text" id="supporting_doc_aggreement" name="supporting_doc_aggreement" placeholder="Enter ..." style="width: 420px;">
                   </div>
                   <div class="form-group">
-                    <label for="total_budget_approved">Quotation</label>
-                    <input class="form-control" type="text" id="total_budget_approved" name="total_budget_approved" required style="width: 420px;">
+                    <label for="supporting_doc_quotation">Quotation</label>
+                    <input class="form-control" type="text" id="supporting_doc_quotation" name="supporting_doc_quotation" placeholder="Enter ..." style="width: 420px;">
                   </div>
                   <div class="form-group">
-                    <label for="total_budget_approved">Purchase Order</label>
-                    <input class="form-control" type="text" id="total_budget_approved" name="total_budget_approved" required style="width: 420px;">
+                    <label for="supporting_doc_purchase">Purchase Order</label>
+                    <input class="form-control" type="text" id="supporting_doc_purchase" name="supporting_doc_purchase" placeholder="Enter ..." style="width: 420px;">
                   </div>
                   <div class="form-group">
-                    <label for="total_budget_approved">Invoice/Receipt</label>
-                    <input class="form-control" type="text" id="total_budget_approved" name="total_budget_approved" required style="width: 420px;">
+                    <label for="supporting_doc_invoice">Invoice/Receipt</label>
+                    <input class="form-control" type="text" id="supporting_doc_invoice" name="supporting_doc_invoice" placeholder="Enter ..." style="width: 420px;">
                   </div>
                   <div class="form-group">
-                    <label for="total_budget_approved">Faktur Pajak</label>
-                    <input class="form-control" type="text" id="total_budget_approved" name="total_budget_approved" required style="width: 420px;">
+                    <label for="supporting_doc_faktur_pajak">Faktur Pajak</label>
+                    <input class="form-control" type="text" id="supporting_doc_faktur_pajak" name="supporting_doc_faktur_pajak" placeholder="Enter ..." style="width: 420px;">
                   </div>
                   <div class="form-group">
-                    <label for="total_budget_approved">Others (if any)</label>
-                    <input class="form-control" type="text" id="total_budget_approved" name="total_budget_approved" required style="width: 420px;">
+                    <label for="supporting_doc_other">Others (if any)</label>
+                    <input class="form-control" type="text" id="supporting_doc_other" name="supporting_doc_other" placeholder="Enter ..." style="width: 420px;">
                   </div>
                   <hr>
                   <div class="form-group"></div>
-                  <label for="total_budget_approved">Description</label>
-                  <textarea class="form-control" rows="6" id="spesifikasi1" name="spesifikasi1" placeholder="Enter ..." style="width: 420px;"></textarea>
-                  <label for="total_budget_approved" style="padding-top: 15px;">Note</label>
-                  <textarea class="form-control" rows="6" id="spesifikasi1" name="spesifikasi1" placeholder="Enter ..." style="width: 420px;"></textarea>
+                  <label for="description">Description</label>
+                  <textarea class="form-control" rows="6" id="description" name="description" placeholder="Enter ..." style="width: 1080px;"></textarea>
+                  <label for="note" style="padding-top: 15px;">Note</label>
+                  <textarea class="form-control" rows="6" id="note" name="note" placeholder="Enter ..." style="width: 1080px;"></textarea>
                   </div>
                 </div>
 
@@ -269,10 +273,10 @@
                     </div>
                   </div>
                 </div>
-
+              </div>
                 <div class="card-footer clearfix">
                   <button type="submit" class="btn btn-secondary">Submit</button>
-                  <a href="{{ url_for('pr.pr_list') }}" class="btn btn-danger" title="Back">Back</a>
+                  <a href="{{ url_for('prf.prf_list') }}" class="btn btn-danger" title="Back">Back</a>
                 </div>
               </div>
             </form>
@@ -298,32 +302,6 @@
         });
       });
     }
-
-    $("#add-row").click(function() {
-      const rowNumber = $("#pr-detail-table tbody tr").length + 1;
-      const newRow = `
-      <tr>
-        <td>${rowNumber}.</td>
-        <td style="width: 300px"><input class="form-control" type="text" name="nama_item${rowNumber}" required placeholder="Enter ..."></td>
-        <td><textarea class="form-control" rows="3" name="spesifikasi${rowNumber}" placeholder="Enter ..."></textarea></td>
-        <td style="width: 120px"><input class="form-control" type="number" name="qty${rowNumber}" required placeholder="Enter ..."></td>
-        <td style="width: 220px">
-          <div class="input-group date" id="tanggal${rowNumber}" data-target-input="nearest">
-            <input type="date" name="tanggal${rowNumber}" class="form-control" />
-            <div class="input-group-append" data-target="#reservationdate${rowNumber}" data-toggle="">
-              <div class="input-group-text"><i class="fa fa-calendar"></i></div>
-            </div>
-          </div>
-        </td>
-        <td style="text-align: center;">
-          <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete PR">
-            <i class="fa fa-trash"></i>
-          </button>
-        </td>
-      </tr>`;
-      $("#pr-detail-table tbody").append(newRow);
-      updateRowNumbers("#pr-detail-table");
-    });
 
     // Menambahkan baris baru
     $("#add-approval").click(function() {
@@ -358,12 +336,6 @@
         });
     }
 
-    // Menghapus baris dan memperbarui nomor baris
-    // $(document).on('click', '.delete-row', function() {
-    //     $(this).closest('tr').remove();
-    //     updateRowNumbers("#approval-table");
-    // });
-
       $("#add-upload").click(function() {
         const rowNumber = $("#upload-table tbody tr").length + 1;
         const newRow = `
@@ -385,47 +357,29 @@
         updateRowNumbers("#upload-table");
       });
 
-    // Preview upload documents
-    // $(document).on('change', 'input[type="file"]', function() {
-    //   const fileInput = $(this)[0];
-    //   const fileName = fileInput.files[0].name;
-    //   const fileReader = new FileReader();
-    //   fileReader.onload = function(e) {
-    //     const fileURL = e.target.result;
-    //     const previewHTML = `
-    //       <div class="file-preview">
-    //         <p>${fileName}</p>
-    //         <img src="${fileURL}" alt="File Preview" class="img-fluid" style="max-height: 100px;">
-    //       </div>`;
-    //     $(fileInput).closest('td').append(previewHTML);
-    //   };
-    //   fileReader.readAsDataURL(fileInput.files[0]);
-    // });
-
     $(document).on("click", ".delete-row", function() {
       $(this).closest("tr").remove();
-      updateRowNumbers("#pr-detail-table");
       updateRowNumbers("#approval-table");
       updateRowNumbers("#upload-table");
     });
 
-    function updatePRNumber() {
+    function updatePRFNumber() {
       const entity = $('#entity').val();
       const department = $('#department').val();
       if (entity && department) {
         $.ajax({
-          url: '/generate_pr',
+          url: '/generate_prf',
           method: 'POST',
           contentType: 'application/json',
           data: JSON.stringify({ entity: entity, department: department }),
           success: function(response) {
-            $('#no_pr').val(response.pr_number);
+            $('#no_prf').val(response.prf_number);
           }
         });
       }
     }
 
-    $('#entity, #department').change(updatePRNumber);
+    $('#entity, #department').change(updatePRFNumber);
   });
 </script>
 
@@ -454,6 +408,7 @@
     }
   }
 </script>
+
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -466,6 +421,45 @@
   });
 </script>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script type="text/javascript">
+    $(document).ready(function() {
+        $('#vendor_name').on('change', function() {
+            // Ambil data dari option yang dipilih
+            var beneficiaryName = $(this).find(':selected').data('beneficiary-name');
+            var bankName = $(this).find(':selected').data('bank');
+            var bankNumberAccount = $(this).find(':selected').data('no-rekening');
+
+            // Isi input berdasarkan data yang diambil
+            $('#beneficiary_name').val(beneficiaryName);
+            $('#beneficiary_bank_name').val(bankName);
+            $('#beneficiary_bank_number_account').val(bankNumberAccount);
+        });
+    });
+</script>
+
+<!-- <script>
+  document.getElementById('currency').addEventListener('change', function() {
+      var currency = this.value;
+      var amountInput = document.getElementById('amount');
+  
+      amountInput.value = ''; // Reset amount value
+  
+      amountInput.addEventListener('input', function() {
+          var value = parseFloat(amountInput.value.replace(/[^0-9.-]+/g, '')) || 0;
+  
+          if (currency === 'IDR') {
+              amountInput.value = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(value);
+          } else if (currency === 'USD') {
+              amountInput.value = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+          } else if (currency === 'CNY') { // Assuming Yuan is represented as CNY
+              amountInput.value = new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(value);
+          } else {
+              amountInput.value = value; // Default to plain number if no match
+          }
+      });
+  });
+  </script> -->
   
 {% endblock %}
 <!-- END INHERETENCE CONTENT -->

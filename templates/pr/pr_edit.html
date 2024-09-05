@@ -39,12 +39,12 @@
     <div class="container-fluid">
       <div class="row mb-2">
         <div class="col-sm-6">
-          <h1>Purchase Requisition</h1>
+          <h1>Purchase Requisition Edit Form</h1>
         </div>
         <div class="col-sm-6">
           <ol class="breadcrumb float-sm-right">
             <li class="breadcrumb-item"><a href="#">Home</a></li>
-            <li class="breadcrumb-item active">PR Input</li>
+            <li class="breadcrumb-item active">PR Edit</li>
           </ol>
         </div>
       </div>
@@ -58,7 +58,7 @@
       <div class="col-md-12">
         <div class="card card-secondary">
           <div class="card-header">
-            <h3 class="card-title">PR INPUT</h3>
+            <h3 class="card-title">PR EDIT</h3>
           </div>
           <div class="card-body">
             <form action="{{ url_for('pr.pr_edit', no_pr=pr_header[0]) }}" method="POST" enctype="multipart/form-data">
@@ -233,8 +233,8 @@
                 </div>
 
                 <div class="card-footer clearfix">
-                  <button type="submit" class="btn btn-secondary">Submit</button>
-                  <a href="{{ url_for('pr.pr_list') }}" class="btn btn-danger" title="Detail">Back</a>
+                  <button type="submit" class="btn btn-secondary">Save</button>
+                  <a href="{{ url_for('pr.pr_list') }}" class="btn btn-danger" title="Detail">Cancel</a>
                 </div>
               </div>
             </form>

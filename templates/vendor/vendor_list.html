@@ -44,6 +44,7 @@
                     <thead>
                     <tr style="text-align: center;">
                         <th style="width: 200px;">Vendor Name</th>
+                        <th style="width: 200px;">Benefeciery Name</th>
                         <th>Vendor Address</th>
                         <th style="width: 130px;">Phone Number</th>
                         <th style="width: 130px;">No. Rek</th>
@@ -55,6 +56,7 @@
                           {% for data in vendor %}
                           <tr>
                             <td>{{ data['vendor_name'] }}</td>
+                            <td>{{ data['benefeciery_name'] }}</td>
                             <td>{{ data['address'] }}</td>
                             <td>{{ data['contact_person'] }}</td>
                             <td>{{ data['no_rekening'] }}</td>

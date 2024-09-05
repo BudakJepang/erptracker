@@ -48,37 +48,40 @@ def vendor_add(vendor_id = None):
             ct = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             created_by = session.get('username', 'system')
             vendor_name = request.form['vendor_name']
+            benefeciery_name = request.form['benefeciery_name']
             address = request.form['address']
             contact_person = request.form['contact_person']
             no_rekening = request.form['no_rekening']
             bank = request.form['bank']
             cur.execute('''
                 UPDATE vendor
-                SET vendor_name = %s, address = %s, contact_person = %s, no_rekening = %s, bank = %s, updated_at = %s, updated_by = %s
+                SET vendor_name = %s, benefeciery_name = %s, address = %s, contact_person = %s, no_rekening = %s, bank = %s, updated_at = %s, updated_by = %s
                 WHERE id = %s
-            ''', (vendor_name, address, contact_person, no_rekening, bank, ct, created_by))
+            ''', (vendor_name, benefeciery_name, address, contact_person, no_rekening, bank, ct, created_by, vendor_id))
+            mysql.connection.commit()
             flash('Vendor updated successfully', 'success')
             return redirect(url_for('vendor.vendor_list'))
     
     else:
-
         vendor = []
-
         if request.method == 'POST':
             ct = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             created_by = session.get('username', 'system')
             vendor_name = request.form['vendor_name']
+            benefeciery_name = request.form['benefeciery_name']
             address = request.form['address']
             contact_person = request.form['contact_person']
             no_rekening = request.form['no_rekening']
             bank = request.form['bank']
             cur.execute('''
-            INSERT INTO vendor (vendor_name, address, contact_person, no_rekening, bank, created_at, created_by, updated_at, updated_by)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ''', (vendor_name, address, contact_person, no_rekening, bank, ct, created_by, ct, created_by))
+            INSERT INTO vendor (vendor_name, benefeciery_name, address, contact_person, no_rekening, bank, created_at, created_by, updated_at, updated_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (vendor_name, benefeciery_name, address, contact_person, no_rekening, bank, ct, created_by, ct, created_by))
             mysql.connection.commit()
             flash('Vendor has been added successfully', 'success')
             return redirect(url_for('vendor.vendor_list'))
+
+        cur.close()
 
 
     return render_template('vendor/vendor_add.html', vendor=vendor)

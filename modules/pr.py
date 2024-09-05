@@ -1280,7 +1280,6 @@ def pr_generate_pdf(no_pr):
     elements.append(Spacer(1, 30))
 
     # PR APPROVAL
-    
     styles = getSampleStyleSheet()
     # footer_style = styles['Normal']
     footer_style.alignment = 1  # Center alignment
