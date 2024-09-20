@@ -63,7 +63,7 @@
                           <td style="text-align: center;">{{ data['no_prf']}}</td>
                           <td style="text-align: left;">{{ data['vendor_name']}}</td>
                           <td style="text-align: center;">{{ data['username']}}</td>
-                          <td style="text-align: center;">{{ data['departement_name']}}</td>
+                          <td style="text-align: center;">{{ data['department_name']}}</td>
                           <td style="text-align: center;">{{ data['request_date']}}</td>
                           <td style="text-align: center;">{{ data['currency']}}</td>
                           <td style="text-align: right;">{{ "{:,.2f}".format(data['amount']) }}</td>
@@ -91,12 +91,22 @@
                             </ol>
                         </td>
                         <td>
+                          {% set all_approved = True %}
+                          {% for status in data['status'].split(', ') %}
+                              {% set parts = status.split(': ') %}
+                              {% set status_value = parts[1] | trim %}
+                              {% if status_value != 'APPROVED' %}
+                                  {% set all_approved = False %}
+                              {% endif %}
+                          {% endfor %}
                           <a href="{{ url_for('prf.prf_detail', no_prf = data['no_prf']) }}" class="btn btn-default btn-sm" title="Detail">
                             <i class="fa fa-info-circle" aria-hidden="true"></i>
                         </a>
+                        {% if session.level != 4 and  all_approved%}
                             <a href="{{ url_for('prf.prf_edit', no_prf = data['no_prf']) }}" class="btn btn-default btn-sm" title="Edit PR">
                                 <i class="fa fa-edit" aria-hidden="true"></i>
                             </a>
+                        {% endif %}
                         </td>
                          {% endfor %}
                          </tr>
@@ -149,18 +159,5 @@
   </div>
 </div>
 <!-- SEARCH PR MODAL -->
-
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          toastr.{{ category }}("{{ message | safe }}");
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-  });
-</script>
-
 {% endblock %}
 <!-- END INHERETENCE CONTENT -->

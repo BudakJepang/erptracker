@@ -409,18 +409,6 @@
   }
 </script>
 
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          toastr.{{ category }}("{{ message | safe }}");
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-  });
-</script>
-
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script type="text/javascript">
     $(document).ready(function() {

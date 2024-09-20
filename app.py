@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, abort
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from functools import wraps
 from flask_mysqldb import MySQL
 from flask import Flask, Blueprint
@@ -12,6 +13,9 @@ from modules.woc import woc_blueprint
 import pandas as pd
 from itsdangerous import URLSafeSerializer
 import os
+from datetime import timedelta
+import jwt
+from modules.helper import login_required
 
 # ================================================================================================================
 # MYSQL CONNNECTION SETUP PARAMETER 
@@ -32,16 +36,25 @@ def appFlask():
     # app.config['MYSQL_DB'] = 'erp'
 
     # DB HOME_________________________________________________
-    app.config['MYSQL_HOST'] = '10.1.1.9'
+    app.config['MYSQL_HOST'] = '10.1.1.11'
     app.config['MYSQL_USER'] = 'rohman'
     app.config['MYSQL_PASSWORD'] = '!@#Bismillah'
     app.config['MYSQL_DB'] = 'playground'
 
+    # app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=1)
     app.config['UPLOAD_FOLDER'] = 'static/uploads'
     app.config['ENTITY_UPLOAD_FOLDER'] = 'static/entity_logo'
     app.config['MAX_CONTENT_PATH'] = 16 * 1024 * 1024  # 16 MB max file size
     app.secret_key = 'prd'
     # SECRET_KEY=os.getenv('SECRET_KEY', 'your_secret_key')
+
+    # GOOGLE SSO OAUTH2 CONFIG
+    app.secret_key = "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"
+
+    # JWT CONFIG
+    app.config['JWT_SECRET_KEY'] = '!@#Bismill4h' # jwt key
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=30) #end session in 30 minutes
+    jwt = JWTManager(app)
     return app
 
 def mysqlConn(app):
@@ -49,6 +62,7 @@ def mysqlConn(app):
     return mysql
 
 app = appFlask()
+# jwt = JWTManager(app)
 mysql = mysqlConn(app)
 # ================================================================================================================
 
@@ -56,25 +70,6 @@ mysql = mysqlConn(app)
 # ================================================================================================================
 # MENU FILTER FOR USER AND LOGIN REQUIRED 
 # ================================================================================================================
-# LOCK REQUIRED TO LOGIN
-# def login_required(f):
-#     @wraps(f)
-#     def decorated_function(*args, **kwargs):
-#         if 'loggedin' not in session:
-#             return redirect(url_for('auth.auth', next=request.url))
-#         return f(*args, **kwargs)
-#     return decorated_function
-
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'loggedin' not in session:
-            next_url = request.url
-            # logging.debug(f"Redirecting to login, next URL: {next_url}")
-            return redirect(url_for('auth.login', next=next_url))
-        return f(*args, **kwargs)
-    return decorated_function
-
 
 # FILTER USER BY MENU
 def get_menu_data(user_id):
@@ -86,7 +81,7 @@ def get_menu_data(user_id):
         4: 'pr.pr_list',
         5: 'prf.prf_list',
         6: 'woc.woc_list',
-        7: 'vendor.vendor_list'
+        7: 'vendor.vendor_list',
     }
 
     # tambahkan icon untuk module menu baru berdasarkan id_menu di db
@@ -96,7 +91,7 @@ def get_menu_data(user_id):
         4: 'nav-icon far fa-edit',
         5: 'nav-icon far fa-edit',
         6: 'nav-icon far fa-edit',
-        7: 'nav-icon far fa-handshake'
+        7: 'nav-icon far fa-handshake',
     }
 
     cursor = mysql.connection.cursor()
@@ -146,25 +141,21 @@ def get_menu_data(user_id):
 
 # AUTHORIZE MENU ACCESS
 # @app.context_processor
-# def inject_menu_data():
-#     if 'id' in session:
-#         menu_data = get_menu_data(session['id'])
-#     else:
-#         menu_data = {}
-#     return dict(menu_data=menu_data)
-
-# @app.context_processor
-# def utility_processor():
-#     return dict(enumerate=enumerate)
+def inject_menu_data():
+    if 'id' in session:
+        menu_data = get_menu_data(session['id'])
+    else:
+        menu_data = {}
+    return dict(menu_data=menu_data)
 
 
 # ================================================================================================================
 # ENCRYPTION SETUP
 # ================================================================================================================
 serializer = URLSafeSerializer(app.config['SECRET_KEY'])
-
-def encrypt_id(id):
-    return serializer.dumps(id)
+def encrypt_id(user_id):
+    s = URLSafeSerializer(app.config['SECRET_KEY'])
+    return s.dumps(user_id)
 
 def decrypt_id(token):
     try:
@@ -176,32 +167,12 @@ def decrypt_id(token):
 @app.context_processor
 def utility_processor():
     context = {}
+    context['serializer'] = serializer
     context['encrypt_id'] = encrypt_id
+    context['decrypt_id'] = decrypt_id
     context['menu_data'] = get_menu_data(session.get('id', 0))
     context['enumerate'] = enumerate
-    context['serializer'] = serializer
     return context
-
-
-def check_access(menu_id):
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            user_id = session.get('id')
-            if not user_id:
-                return redirect(url_for('login'))
-
-            cursor = mysql.connection.cursor()
-            cursor.execute('SELECT 1 FROM user_access WHERE user_id = %s AND menu_id = %s', (user_id, menu_id))
-            access = cursor.fetchone()
-            cursor.close()
-
-            if not access:
-                flash('You do not have access to this page', 'danger')
-                return abort(403)
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
 # ================================================================================================================
 
 
@@ -218,8 +189,16 @@ app.register_blueprint(woc_blueprint)
 
 @app.route('/')
 @login_required
+# @jwt_required()
 def index():
     return render_template('home.html')
+
+# @app.route('/')
+# @login_required
+# @jwt_required()
+# def index():
+#     current_user = get_jwt_identity()  # Mendapatkan user yang login
+#     return render_template('home.html', user=current_user)
 # ================================================================================================================ 
 
 
@@ -229,10 +208,11 @@ def index():
 if __name__ == '__main__':
     
     # MY HOME________________________________________
-    app.run(host='10.1.1.9', port=5000, debug=True)
+    # app.run(host='10.1.1.11', port=5000, debug=True)
     
     # MY MAC__________________________________________
     # app.run(host='10.0.13.247', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=80, debug=True)
 
     # ON PREM_________________________________________
     # app.run(host='10.0.13.53', port=5000, debug=True)

@@ -1,0 +1,342 @@
+{% extends 'base.html' %}
+
+<!-- INHERETENCE SIDEBAR -->
+
+<!--END INHERETENCE SIDEBAR -->
+
+<!-- INHERETENCE CONTENT -->
+{% block content %}
+
+<!-- SCRIPT UNTUK COMA PADA NUMBER -->
+<script>
+  function formatNumber(num) {
+      return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
+
+  document.addEventListener('DOMContentLoaded', (event) => {
+      const input = document.getElementById('total_budget_approved');
+
+      input.addEventListener('input', (e) => {
+          let value = input.value.replace(/,/g, '');
+          if (!isNaN(value) && value !== '') {
+              input.value = formatNumber(value);
+          }
+      });
+
+      const form = document.querySelector('form');
+      form.addEventListener('submit', (e) => {
+          let value = input.value.replace(/,/g, '');
+          input.value = value;
+      });
+  });
+</script>
+<!-- END SCRIPT UNTUK COMA PADA NUMBER -->
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper">
+  <!-- Content Header (Page header) -->
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1>Waiver of Competition Form</h1>
+        </div>
+        <div class="col-sm-6">
+          <ol class="breadcrumb float-sm-right">
+            <li class="breadcrumb-item"><a href="#">Home</a></li>
+            <li class="breadcrumb-item active">WOC Edit</li>
+          </ol>
+        </div>
+      </div>
+    </div><!-- /.container-fluid -->
+  </section>
+
+<!-- Main FORM PR HEADER and PR DETAIL -->
+<section class="content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card card-secondary">
+          <div class="card-header">
+            <h3 class="card-title">PRF EDIT</h3>
+          </div>
+          <div class="card-body">
+            <form action="{{ url_for('woc.woc_edit', no_woc=woc_header['no_woc']) }}" method="POST" enctype="multipart/form-data">
+              <div class="row">
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label for="no_woc">Nomor WOC</label>
+                    <input type="text" name="no_woc" id="no_woc" class="form-control" disabled value="{{ woc_header['no_woc'] }}">
+                  </div>
+                </div>
+                <div class="col-sm-3">
+                    <div class="form-group">
+                        <label for="no_prf">Date Request</label>
+                        <input type="text" class="form-control" disabled value="{{ woc_header['request_date'].strftime('%d %Bs %Y') }}">
+                      </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-sm-3">
+                  <div class="form-group">
+                    <label for="beneficiary_name">Vendor</label>
+                    <select class="form-control select2bs4" name="beneficiary_name" id="beneficiary_name" style="width: 100%;" required>
+                        <option value="{{ woc_header['vendor_id'] }}">{{ woc_header['vendor_name'] }}</option>
+                        {% for vendor in vendors %}
+                        <option value="{{ vendor['id'] }}" data-beneficiary-name="{{ vendor['id'] }}">
+                                {{ vendor['vendor_name'] }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="requester_name">Requester Name</label>
+                  <input class="form-control" type="text" id="requester_name" name="requester_name" placeholder="Enter ..." required value="{{ woc_header['requester_name'] }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <input class="form-control" type="text" id="description" name="description" placeholder="Enter ..." required value="{{ woc_header['description'] }}">
+                </div>
+                <div class="form-group">
+                    <label for="reason">Reason</label>
+                    <input class="form-control" type="text" id="reason" name="reason" placeholder="Enter ..." required value="{{ woc_header['reason'] }}">
+                </div>
+                
+
+                </div>
+                </div>
+
+
+                <!-- FORM APPROVAL & UPLOAD DOCUMENTS -->
+                <div class="row">
+                  <div class="col-sm-6">
+                    <div class="card-header">
+                      <h3 class="card-title">FORM APPROVAL</h3>
+                    </div>
+                    <div class="card-body">
+                      <div style="margin-bottom: 10px;">
+                        <button type="button" class="btn btn-default" id="add-approval" title="Add Approval">
+                          <i class="fas fa-plus"></i>
+                        </button>
+                      </div>
+                      <table class="table table-bordered" id="approval-table">
+                        <thead>
+                          <tr>
+                            <th style="width: 10px">No</th>
+                            <th style="text-align: center;">Approval</th>
+                            <th style="width: 90px; text-align: center;">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                            {% for approval_list in woc_approval %}
+                            <tr data-index="{{ loop.index }}">
+                              <td>{{ loop.index }}</td>
+                              <td style="width: 80%">
+                                <select class="form-control select2bs4" name="approval{{ loop.index }}_user_id" id="approval{{ loop.index }}_user_id" style="width: 100%;" required>
+                                  <option value="{{ approval_list['approval_user_id'] }}">{{ approval_list['username'] }}</option>
+                                  {% for approver in approver %}
+                                  <option value="{{ approver['id'] }}">{{ approver['username'] }}</option>
+                                  {% endfor %}
+                                </select>
+                              </td>
+                            <td style="text-align: center;">
+                              <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Approval">
+                                <i class="fa fa-trash"></i>
+                              </button>
+                            </td>
+                          </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <!-- <div class="col-sm-6">
+                    <div class="card-header">
+                      <h3 class="card-title">UPLOAD DOCUMENTS</h3>
+                    </div>
+                    <div class="card-body">
+                      <div class="table-responsive">
+                      <div style="margin-bottom: 10px;">
+                        <button type="button" class="btn btn-default" id="add-upload" title="Add Upload">
+                          <i class="fas fa-plus"></i>
+                        </button>
+                      </div>
+                      <table class="table table-bordered" id="upload-table">
+                        <thead>
+                          <tr>
+                            <th style="width: 10px">No</th>
+                            <th style="text-align: center;">Upload Documents</th>
+                            <th style="text-align: center;">Preview</th>
+                            <th style="width: 90px; text-align: center;">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>1.</td>
+                            <td style="width: 80%">
+                              <input type="file" name="files[]" multiple onchange="previewFiles(this)">
+                            </td>
+                            <td>
+                              <div class="preview" style="width: 150px; text-align: center;"></div>
+                            </td>
+                            <td style="text-align: center;">
+                              <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Upload">
+                                <i class="fa fa-trash"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    </div>
+                  </div> -->
+                </div>
+              </div>
+                <div class="card-footer clearfix">
+                  <button type="submit" class="btn btn-secondary">Submit</button>
+                  <a href="{{ url_for('woc.woc_list') }}" class="btn btn-danger" title="Back">Back</a>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  $(document).ready(function() {
+    function updateRowNumbers(tableId) {
+        $(tableId + " tbody tr").each(function(index) {
+            $(this).attr("data-index", index + 1);
+            $(this).find("td:first").text((index + 1) + ".");
+            $(this).find("input, select, textarea").each(function() {
+                const name = $(this).attr("name");
+                if (name) {
+                    const newName = name.replace(/\d+/, (index + 1));
+                    $(this).attr("name", newName);
+                }
+            });
+        });
+    }
+
+    $("#add-approval").click(function() {
+      let rowNumber = $("#approval-table tbody tr").length + 1;
+      let newRow = `
+      <tr data-index="${rowNumber}">
+        <td>${rowNumber}.</td>
+        <td style="width: 80%">
+          <select class="form-control select2bs4" name="approval${rowNumber}_user_id" id="approval${rowNumber}_user_id" style="width: 100%;" required>
+            <option value="">Select Approval ...</option>
+            {% for approver in approver %}
+            <option value="{{ approver['id'] }}" data-entity-id="{{ approver['username'] }}">{{ approver['username'] }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td style="text-align: center;">
+          <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Approval">
+            <i class="fa fa-trash"></i>
+          </button>
+        </td>
+      </tr>`;
+      $("#approval-table tbody").append(newRow);
+      updateRowNumbers("#approval-table");
+    });
+
+    $(document).on("click", ".delete-row", function() {
+        $(this).closest("tr").remove();
+        updateRowNumbers("#approval-table");
+    });
+});
+
+$("#add-upload").click(function() {
+  const rowNumber = $("#upload-table tbody tr").length + 1;
+  const newRow = `
+  <tr>
+    <td>${rowNumber}.</td>
+    <td style="width: 80%">
+      <input type="file" name="files[]" multiple onchange="previewFiles(this)">
+    </td>
+    <td>
+      <div class="preview" style="width: 150px; text-align: center;"></div>
+    </td>
+    <td style="text-align: center;">
+      <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete Upload">
+        <i class="fa fa-trash"></i>
+      </button>
+    </td>
+  </tr>`;
+  $("#upload-table tbody").append(newRow);
+  updateRowNumbers("#upload-table");
+});
+
+$(document).on("click", ".delete-row", function() {
+  const fileId = $(this).data('file-id');
+  if (fileId) {
+    const deletedFilesInput = $("<input>").attr("type", "hidden").attr("name", "deleted_files[]").val(fileId);
+    $("form").append(deletedFilesInput);
+  }
+  $(this).closest("tr").remove();
+  updateRowNumbers("#upload-table");
+});
+
+$(document).on("change", "input[type='file']", function() {
+  const fileId = $(this).data('file-id');
+  if (fileId) {
+    $(this).attr('name', `existing_files[${fileId}]`);
+  }
+  previewFiles(this);
+});
+</script>
+
+<script>
+  function previewFiles(input) {
+    var previewContainer = input.parentNode.nextElementSibling.querySelector('.preview');
+    previewContainer.innerHTML = ''; // Clear existing previews
+
+    var files = input.files;
+
+    if (files) {
+      for (var i = 0; i < files.length; i++) {
+        var reader = new FileReader();
+
+        reader.onload = function (e) {
+          var img = document.createElement('img');
+          img.src = e.target.result;
+          img.alt = 'File Preview';
+          img.classList.add('img-fluid');
+          img.style.maxHeight = '100px';
+          previewContainer.appendChild(img);
+        };
+
+        reader.readAsDataURL(files[i]);
+      }
+    }
+  }
+</script>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script type="text/javascript">
+    $(document).ready(function() {
+        $('#beneficiary_name').on('change', function() {
+            // ambil data dari option yang dipilih
+            var beneficiaryName = $(this).find(':selected').data('beneficiary-name');
+            var bankName = $(this).find(':selected').data('bank');
+            var bankNumberAccount = $(this).find(':selected').data('no-rekening');
+
+            // isi input berdasarkan data yang diambil
+            $('#beneficiary_name').val(beneficiaryName);
+            $('#beneficiary_bank_name').val(bankName);
+            $('#beneficiary_bank_number_account').val(bankNumberAccount);
+        });
+    });
+</script>
+  
+{% endblock %}
+<!-- END INHERETENCE CONTENT -->

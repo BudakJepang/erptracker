@@ -118,15 +118,6 @@
   <script src="static/plugins/jquery/jquery.min.js"></script><!-- Bootstrap JS -->
   <script src="static/plugins/bootstrap/js/bootstrap.min.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            toastr["{{ category }}"]("{{ message | safe }}");
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
-    });
   
     $('#modal-danger').on('show.bs.modal', function (event) {
       var button = $(event.relatedTarget); // Button that triggered the modal

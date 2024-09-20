@@ -11,7 +11,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, KeepInFrame, Frame, PageBreak
 from reportlab.graphics.shapes import Drawing, Line
 from reportlab.lib import colors
-from reportlab.lib.units import inch
+from reportlab.lib.units import inch, cm
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
 from reportlab.lib.colors import Color
 # from reportlab.graphics.shapes import Line
@@ -20,9 +20,10 @@ from datetime import datetime
 from flask_mysqldb import MySQL, MySQLdb
 from werkzeug.utils import secure_filename
 from PyPDF2 import PdfReader, PdfWriter
-from modules.mail import pr_mail, approval_notification_mail, alert_mail, pr_alert_mail
+from modules.mail import pr_alert_mail_manual, pr_alert_mail, pr_alert_mail_done, pr_alert_mail_rejected
 from modules.logs import insert_pr_log
 import socket
+from modules.helper import login_required, menu_access_required
 
 
 
@@ -124,6 +125,7 @@ def process_and_insert_logs(no_pr, requester_id, ip_address, user_id, functions)
             description = f'Sign by {first_email_description_app}'
             insert_pr_log(no_pr, requester_id, "SIGNED", description, ip_address, today)
             insert_pr_log(no_pr, requester_id, "COMPLETED", "The document has been completed.", ip_address, today)
+            pr_alert_mail_done(no_pr, "mohammad.nurohman@byorange.co.id", today)
         elif email_descriptions_app:
             first_email_description_app = email_descriptions_app[0]
             description = f'Sign by {first_email_description_app}'
@@ -166,26 +168,26 @@ def process_and_insert_logs(no_pr, requester_id, ip_address, user_id, functions)
             first_email_description_app = email_descriptions_app[0]
             description = f'The document has been rejected by {first_email_description_app}'
             insert_pr_log(no_pr, requester_id, "REJECTED", description, ip_address, today)
+            pr_alert_mail_rejected(no_pr, "mohammad.nurohman@byorange.co.id", today)
         else:
             pass
 
     else:
         pass
-             
 
     cur.close()
 
 
 # LOCK ADDRESS LOGIN REQUIRED  ____________________________________________________________
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'loggedin' not in session:
-            next_url = request.url
-            logging.debug(f"Redirecting to login, next URL: {next_url}")
-            return redirect(url_for('auth.login', next=next_url))
-        return f(*args, **kwargs)
-    return decorated_function
+# def login_required(f):
+#     @wraps(f)
+#     def decorated_function(*args, **kwargs):
+#         if 'loggedin' not in session:
+#             next_url = request.url
+#             logging.debug(f"Redirecting to login, next URL: {next_url}")
+#             return redirect(url_for('auth.login', next=next_url))
+#         return f(*args, **kwargs)
+#     return decorated_function
 
 
 # BLUEPRINT AUTH VARIABLE
@@ -198,6 +200,7 @@ pr_blueprint = Blueprint('pr', __name__)
 # ====================================================================================================================================
 @pr_blueprint.route('/pr_list')
 @login_required
+@menu_access_required(4)
 def pr_list():
     from app import mysql
     import traceback
@@ -302,6 +305,7 @@ def generate_pr():
 # MAIN PR SUBMIT_________________________________________________________________
 @pr_blueprint.route('/pr_add', methods=['GET', 'POST'])
 @login_required
+@menu_access_required(4)
 def pr_add():
     pr_number = None
 
@@ -463,20 +467,26 @@ def pr_add():
 
             # COMMIT ALL QUERY EXECUTION
             mysql.connection.commit()
-            
-            flash('New PR has been added', 'danger')
+            flash('New PR has been added', 'success')
             
             cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
             query_single_mail = '''
                 SELECT 
-                    no_pr,
-                    approval_no,
-                    approval_user_id,
+                    pa.no_pr,
+                    pa.approval_no,
+                    pa.approval_user_id,
                     ua.username,
-                    ua.email 
+                    ua.email,
+                    ph.nama_project,
+                    ph.total_budget_approved,
+                    pd.tanggal as due_date,
+                    e.entity_name 
                 FROM pr_approval pa 
                 LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
-                WHERE no_pr = %s
+                LEFT JOIN pr_detail pd ON pa.no_pr = pd.no_pr
+                LEFT JOIN pr_header ph ON pa.no_pr = ph.no_pr
+                LEFT JOIN entity e ON ph.entity_id = e.id
+                WHERE pa.no_pr = %s
                 ORDER BY 2 ASC
                 LIMIT 1
             '''
@@ -485,7 +495,12 @@ def pr_add():
             cur.close()
 
             mail_approval_recipient = first_approval_mail['email']
-            pr_alert_mail(no_pr, mail_approval_recipient)
+            mail_approval_name = first_approval_mail['username']
+            project_name = first_approval_mail['nama_project']
+            budget_app = first_approval_mail['total_budget_approved']
+            due_date = first_approval_mail['due_date']
+            entity_name = first_approval_mail['entity_name']
+            pr_alert_mail(no_pr, mail_approval_recipient, mail_approval_name, entity_name, project_name, budget_app, due_date, today)
             process_and_insert_logs(no_pr, requester_id, ip_address, None, functions='submit')
             return redirect(url_for('pr.pr_list'))
         
@@ -516,6 +531,7 @@ import logging
 # ====================================================================================================================================
 @pr_blueprint.route('/pr_detail_page/<no_pr>', methods=['GET', 'POST'])
 @login_required
+@menu_access_required(4)
 def pr_detail_page(no_pr):
     from app import mysql
     cur = mysql.connection.cursor()
@@ -550,6 +566,9 @@ def pr_detail_page(no_pr):
     # QUERY LIST FOR PR_DETAIL__________________________________________________________
     cur.execute("SELECT no_pr, item_no, nama_item, spesifikasi, qty, tanggal FROM pr_detail WHERE no_pr = %s", (no_pr,))
     pr_detail = cur.fetchall()
+    pr_detail_list = list(pr_detail[0])
+    pr_detail_list[3] = pr_detail_list[3].replace("NL", " ")
+    pr_detail = (tuple(pr_detail_list),)  
 
     # QUERY LIST FOR APPROVAL___________________________________________________________
     query_approval = """
@@ -627,7 +646,7 @@ def pr_send_mail_manual(approval_id, no_pr):
     approval_name = data_email['username']
 
     try:
-        alert_mail(no_pr, mail_recipient, nama_project, nama_entity, nama_requester, tanggal_request, budget, due_date, approval_name, today)
+        pr_alert_mail_manual(no_pr, mail_recipient, nama_project, nama_entity, nama_requester, tanggal_request, budget, due_date, approval_name, today)
         flash(f'Mail has been sent to {mail_recipient}', 'success')
 
     except Exception as e:
@@ -654,23 +673,38 @@ def send_sequence_mail_pr(no_pr):
             pa.approval_no,
             pa.approval_user_id,
             ua.email,
-            pa.status 
+            pa.status,
+            ua.username,
+            ph.nama_project,
+            ph.total_budget_approved,
+            pd.tanggal,
+            e.entity_name
         FROM pr_header ph 
         LEFT JOIN pr_approval pa ON ph.no_pr = pa.no_pr
         LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
+        LEFT JOIN pr_detail pd ON pa.no_pr = pd.no_pr 
+        LEFT JOIN entity e ON ph.entity_id = e.id
         WHERE pa.status IS NULL
         AND ph.no_pr = %s
-        ORDER BY approval_no DESC
+        ORDER BY pa.approval_no ASC
         LIMIT 1
     '''
     cur.execute(query, [no_pr])
     data = cur.fetchone()
     cur.close()
 
-    return data['email'] if data else None
+    mail_approval_recipient = data['email'] if data else None
+    mail_approval_name = data['username'] if data else None
+    entity_name = data['entity_name'] if data else None
+    project_name = data['nama_project'] if data else None
+    budget_app = data['total_budget_approved'] if data else None
+    due_date = data['tanggal'] if data else None
+
+    return mail_approval_recipient, mail_approval_name, entity_name, project_name, budget_app, due_date
 
 # APPROVED ____________________________________________________________________________________________________________________________
 @login_required
+@menu_access_required(4)
 @pr_blueprint.route('/pr_approved/<no_pr>', methods=['GET', 'POST'])
 def pr_approved(no_pr):
     from app import mysql
@@ -694,10 +728,11 @@ def pr_approved(no_pr):
         try:
             cur.execute(update_query, (approval_notes, no_pr, approval_user_id))
             mysql.connection.commit()
-            mail_next_approval = send_sequence_mail_pr(no_pr)
+            mail_approval_recipient, mail_approval_name, entity_name, project_name, budget_app, due_date = send_sequence_mail_pr(no_pr)
+            today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-            if mail_next_approval:
-                # pr_alert_mail(no_pr, mail_next_approval)
+            if mail_approval_recipient:
+                pr_alert_mail(no_pr, mail_approval_recipient, mail_approval_name, entity_name, project_name, budget_app, due_date, today)
                 process_and_insert_logs(no_pr, current_user_id, ip_address, current_user_id, functions='sign')
                 process_and_insert_logs(no_pr, current_user_id, ip_address, current_user_id, functions='submit')
             else:
@@ -717,6 +752,7 @@ def pr_approved(no_pr):
 # REJECTED ___________________________________________________________________________________________________________________________
 @pr_blueprint.route('/pr_rejected/<no_pr>', methods=['GET', 'POST'])
 @login_required
+@menu_access_required(4)
 def pr_rejected(no_pr):
     from app import mysql
     cur = mysql.connection.cursor()
@@ -737,13 +773,6 @@ def pr_rejected(no_pr):
         try:
             cur.execute(update_query, (approval_notes, no_pr, approval_user_id))
             mysql.connection.commit()
-            # email = 'rohmankpai@gmail.com'
-            # requestName = 'Mohammad Nurohman'
-            # approvalName = 'David Irwan'
-            # entityName = 'PT. ORANGE INOVASI DIGITAL'
-            # budget = "2000000"
-            # dueDate = '2024-08-01'
-            # pr_mail(no_pr, email, requestName, approvalName, budget, dueDate, entityName)
             process_and_insert_logs(no_pr, current_user_id, ip_address, current_user_id, functions='rejected')
             flash('PR has been REJECTED!', 'success')
 
@@ -764,6 +793,7 @@ def pr_rejected(no_pr):
 # ====================================================================================================================================
 @pr_blueprint.route('/pr_edit/<no_pr>', methods=['GET', 'POST'])
 @login_required
+@menu_access_required(4)
 def pr_edit(no_pr):
     from app import mysql
 
@@ -840,206 +870,208 @@ def pr_edit(no_pr):
         return redirect(url_for('pr.pr_list'))
 
     if request.method == 'POST':
-
-        # FOR UPDATE PR_HEADER VALUES________________________________________________________________________________
-        nama_project = request.form['nama_project']
-        total_budget = request.form['total_budget_approved']
-        today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
         try:
-            cur.execute('''
-                UPDATE pr_header 
-                SET nama_project=%s, total_budget_approved=%s, updated_at=%s 
-                WHERE no_pr = %s
-            ''', (nama_project, total_budget, today, no_pr))
-        except Exception as e:
-            print(e)
+            mysql.connection.begin()
 
-        mysql.connection.commit()
-    
-        # FOR UPDATE DETAIL__________________________________________________________________________________________
-        # GETTING LIST DETAIL
-        cur.execute("SELECT item_no, nama_item, spesifikasi, qty, tanggal FROM pr_detail WHERE no_pr = %s", (no_pr,))
-        existing_details = cur.fetchall()
+            # FOR UPDATE PR_HEADER VALUES________________________________________________________________________________
+            nama_project = request.form['nama_project']
+            total_budget = request.form['total_budget_approved']
+            today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        # CONVERT LIST DETAIL QUERY YANG SUDAH ADA DI TABLE TO DICT AGAR MUDAH UNTUK COMPARE ID YANG AKAN DIEKSEKUSI
-        existing_details_dict = {item[0]: item for item in existing_details}
-
-        # DAPATKAN VALUE BARU DARI FORM HTML UNTUK DI INSERT, UPDATE ATAU DELETE
-        new_details = []
-        index = 1
-        # deleted_id = []
-        while True:
             try:
-                nama_item = request.form[f'nama_item{index}']
-                spesifikasi = request.form[f'spesifikasi{index}']
-                qty = request.form[f'qty{index}']
-                tanggal = request.form[f'tanggal{index}']
-                new_details.append((index, nama_item, spesifikasi, qty, tanggal))
-                index += 1
-            except KeyError:
-                break
+                cur.execute('''
+                    UPDATE pr_header 
+                    SET nama_project=%s, total_budget_approved=%s, updated_at=%s 
+                    WHERE no_pr = %s
+                ''', (nama_project, total_budget, today, no_pr))
+            except Exception as e:
+                print(e)
 
-        # CONVERT ID YANG BARU SAJA DI INPUT DALAM HTML UNTUK DIKOMPARASI DENGAN ID YANG LAMA
-        new_details_dict = {item[0]: item for item in new_details}
-
-        # IDENTIFIKASI DETAIL YANG ININ DI INSERT, UDPATE ATAU DELETE
-        details_to_insert = []
-        details_to_update = []
-        details_to_delete = []
-        today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        # BUAT LOOPING DARI INDEX (ITEM NUMBER) HTML DAN KONDISI
-        # KONDISINYA JIKA TIDAK ADA INDEX BARU PADA INPUTAN MAKA STATUSNYA DI INSERT BARU
-        # JIKA STATUSNYA INDEX TERSEBUT ADA TAPI ADA PERUBAHAN MAKA AKAN DIUPDATE DATANYA
-        # JIKA STATUSNYA INDEX TERSEBUT DIKOMPARE ANTARA INDEX LAMA DENGAN INDEX BARU DAN TERNYATA TIDAK ADA PADA INDEX BARU MAKA DATA TERSEBUT AKAN DIHAPUS
-        for index, detail in new_details_dict.items():
-            if index not in existing_details_dict:
-                details_to_insert.append((no_pr, index, detail[1], detail[2], detail[3], detail[4], today, today))
-            elif detail != existing_details_dict[index]:
-                details_to_update.append((detail[1], detail[2], detail[3], detail[4], today, no_pr, index))
-
-        for index in existing_details_dict:
-            if index not in new_details_dict:
-                details_to_delete.append(index)
-
-        # INSERT NEW DATA
-        if details_to_insert:
-            insert_query = '''
-                INSERT INTO pr_detail (no_pr, item_no, nama_item, spesifikasi, qty, tanggal, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            '''
-            cur.executemany(insert_query, details_to_insert)
-
-        # UDPATE EXISTING DATA
-        if details_to_update:
-            update_query = '''
-                UPDATE pr_detail
-                SET nama_item = %s, spesifikasi = %s, qty = %s, tanggal = %s, updated_at = %s
-                WHERE no_pr = %s AND item_no = %s
-            '''
-            cur.executemany(update_query, details_to_update)
-
-        # DELETE OLD DATA WHEN NOT USED
-        if details_to_delete:
-            delete_query = '''
-                DELETE FROM pr_detail
-                WHERE no_pr = %s AND item_no = %s
-            '''
-            cur.executemany(delete_query, [(no_pr, index) for index in details_to_delete])
-
-        mysql.connection.commit()
-
-
-        # INSERT NEW APPROVAL________________________________________________________________________________________
-        # GETTING LIST APPROVAL
-        cur.execute("SELECT approval_no, approval_user_id, status, notes FROM pr_approval WHERE no_pr = %s", (no_pr,))
-        existing_approval = cur.fetchall()
-        existing_approval_dict = {item[0]: item for item in existing_approval}
         
-        new_approval = []
-        idx = 1
-        while True:
-            try:
-                approval_user_id = request.form[f'approval{idx}_user_id']
-                new_approval.append((idx, approval_user_id))
-                idx += 1
-            except KeyError:
-                break
-        
-        new_approval_dict = {item[0]: item for item in new_approval}
+            # FOR UPDATE DETAIL__________________________________________________________________________________________
+            # GETTING LIST DETAIL
+            cur.execute("SELECT item_no, nama_item, spesifikasi, qty, tanggal FROM pr_detail WHERE no_pr = %s", (no_pr,))
+            existing_details = cur.fetchall()
 
-        approval_to_insert = []
-        approval_to_update = []
-        approval_to_delete = []
+            # CONVERT LIST DETAIL QUERY YANG SUDAH ADA DI TABLE TO DICT AGAR MUDAH UNTUK COMPARE ID YANG AKAN DIEKSEKUSI
+            existing_details_dict = {item[0]: item for item in existing_details}
 
-        for idx, value in new_approval_dict.items():
-            if idx not in existing_approval_dict:
-                approval_to_insert.append((no_pr, idx, value[1], None, None, today))
-            elif value != existing_approval_dict[idx]:
-                approval_to_update.append((value[1], None, None, today, no_pr, idx))
+            # DAPATKAN VALUE BARU DARI FORM HTML UNTUK DI INSERT, UPDATE ATAU DELETE
+            new_details = []
+            index = 1
+            # deleted_id = []
+            while True:
+                try:
+                    nama_item = request.form[f'nama_item{index}']
+                    spesifikasi = request.form[f'spesifikasi{index}']
+                    qty = request.form[f'qty{index}']
+                    tanggal = request.form[f'tanggal{index}']
+                    new_details.append((index, nama_item, spesifikasi, qty, tanggal))
+                    index += 1
+                except KeyError:
+                    break
 
-        for idx in existing_approval_dict:
-            if idx not in new_approval_dict:
-                approval_to_delete.append(idx)
+            # CONVERT ID YANG BARU SAJA DI INPUT DALAM HTML UNTUK DIKOMPARASI DENGAN ID YANG LAMA
+            new_details_dict = {item[0]: item for item in new_details}
 
-        if approval_to_insert:
-            insert_query = '''
-                INSERT INTO pr_approval (no_pr, approval_no, approval_user_id, status, notes, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            '''
-            cur.executemany(insert_query, approval_to_insert)
+            # IDENTIFIKASI DETAIL YANG ININ DI INSERT, UDPATE ATAU DELETE
+            details_to_insert = []
+            details_to_update = []
+            details_to_delete = []
+            today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        if approval_to_update:
-            update_query = '''
-                UPDATE pr_approval
-                SET approval_user_id = %s, status = %s, notes = %s, created_at = %s
-                WHERE no_pr = %s AND approval_no = %s
-            '''
-            cur.executemany(update_query, approval_to_update)
+            # BUAT LOOPING DARI INDEX (ITEM NUMBER) HTML DAN KONDISI
+            # KONDISINYA JIKA TIDAK ADA INDEX BARU PADA INPUTAN MAKA STATUSNYA DI INSERT BARU
+            # JIKA STATUSNYA INDEX TERSEBUT ADA TAPI ADA PERUBAHAN MAKA AKAN DIUPDATE DATANYA
+            # JIKA STATUSNYA INDEX TERSEBUT DIKOMPARE ANTARA INDEX LAMA DENGAN INDEX BARU DAN TERNYATA TIDAK ADA PADA INDEX BARU MAKA DATA TERSEBUT AKAN DIHAPUS
+            for index, detail in new_details_dict.items():
+                if index not in existing_details_dict:
+                    details_to_insert.append((no_pr, index, detail[1], detail[2], detail[3], detail[4], today, today))
+                elif detail != existing_details_dict[index]:
+                    details_to_update.append((detail[1], detail[2], detail[3], detail[4], today, no_pr, index))
 
-        if approval_to_delete:
-            delete_query = '''
-                DELETE FROM pr_approval
-                WHERE no_pr = %s AND approval_no = %s
-            '''
-            cur.executemany(delete_query, [(no_pr, index) for index in approval_to_delete])
+            for index in existing_details_dict:
+                if index not in new_details_dict:
+                    details_to_delete.append(index)
 
-        mysql.connection.commit()
-                
-        # INSERT NEW UPLOADS________________________________________________________________________________________
-        upload_files = request.files.getlist('files[]')
-        upload_docs = []
-        for i, file in enumerate(upload_files):
-            if file:
-                filename = secure_filename(file.filename)
-                upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-                file.save(upload_path)
-                relative_path = os.path.relpath(upload_path, 'static')  # UBAH PATHNYA AGAR TIDAK DITULIS STRING static PADA DATABASE
-                relative_path = relative_path.replace('\\', '/') # RUBAH BACKSLASH MENJADI SLASH KETIKA INSERT KE DATABASE AGAR DAPAT DI VIEW PADA HTML
-                upload_docs.append((no_pr, filename, relative_path, user_id, today, user_id, today))
-
-        if upload_docs:
-            insert_docs_query = '''
-                INSERT INTO pr_docs_reference (no_pr, doc_name, path, created_by, created_at, updated_by, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            '''
-            cur.executemany(insert_docs_query, upload_docs)
-            mysql.connection.commit()
-            
-        # UPDATE UPLOAD FILES
-        existing_files = request.files # LIST ATAU GET FILE YANG DIUPLOAD SEBELUMNYA DAPAT VALUENYA BALIKAN DARI DATABASE YANG ADA DI HTML
-        for file_id, file in existing_files.items():
-            if file and 'existing_files[' in file_id: # CHEKC FILE YANG AKAN DIUNGGAH APAKAH EXISITNG ATAU TIDAK PENANDANYA MENGGUNAKAN 'existing_files['
-                
-                # Dari file_id seperti existing_files[1], kita mengekstrak ID file. lalu pisahin dengan split('[') buat memisahkan string menjadi daftar berdasarkan [, 
-                # kemudian [-1][:-1] mengambil bagian terakhir dari daftar (yaitu 1]) dan menghapus karakter ] dari akhirnya, sehingga kita mendapatkan 1.
-                actual_file_id = file_id.split('[')[-1][:-1]
-                filename = secure_filename(file.filename)
-                upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-                file.save(upload_path)
-                relative_path = os.path.relpath(upload_path, 'static') 
-                relative_path = relative_path.replace('\\', '/')
-                update_docs_query = '''
-                    UPDATE pr_docs_reference
-                    SET doc_name = %s, path = %s, updated_by = %s, updated_at = %s
-                    WHERE id = %s
+            # INSERT NEW DATA
+            if details_to_insert:
+                insert_query = '''
+                    INSERT INTO pr_detail (no_pr, item_no, nama_item, spesifikasi, qty, tanggal, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 '''
-                cur.execute(update_docs_query, (filename, relative_path, user_id, today, actual_file_id))
-                mysql.connection.commit()
+                cur.executemany(insert_query, details_to_insert)
 
-        # DELETE UPLOADS FILE FROM DB
-        deleted_files = request.form.getlist('deleted_files[]')
-        if deleted_files:
-            delete_docs_query = '''
-                DELETE FROM pr_docs_reference WHERE id IN (%s)
-            ''' % ', '.join(['%s'] * len(deleted_files))
-            cur.execute(delete_docs_query, tuple(deleted_files))
+            # UDPATE EXISTING DATA
+            if details_to_update:
+                update_query = '''
+                    UPDATE pr_detail
+                    SET nama_item = %s, spesifikasi = %s, qty = %s, tanggal = %s, updated_at = %s
+                    WHERE no_pr = %s AND item_no = %s
+                '''
+                cur.executemany(update_query, details_to_update)
+
+            # DELETE OLD DATA WHEN NOT USED
+            if details_to_delete:
+                delete_query = '''
+                    DELETE FROM pr_detail
+                    WHERE no_pr = %s AND item_no = %s
+                '''
+                cur.executemany(delete_query, [(no_pr, index) for index in details_to_delete])
+
+
+
+            # INSERT NEW APPROVAL________________________________________________________________________________________
+            # GETTING LIST APPROVAL
+            cur.execute("SELECT approval_no, approval_user_id, status, notes FROM pr_approval WHERE no_pr = %s", (no_pr,))
+            existing_approval = cur.fetchall()
+            existing_approval_dict = {item[0]: item for item in existing_approval}
+            
+            new_approval = []
+            idx = 1
+            while True:
+                try:
+                    approval_user_id = request.form[f'approval{idx}_user_id']
+                    new_approval.append((idx, approval_user_id))
+                    idx += 1
+                except KeyError:
+                    break
+            
+            new_approval_dict = {item[0]: item for item in new_approval}
+
+            approval_to_insert = []
+            approval_to_update = []
+            approval_to_delete = []
+
+            for idx, value in new_approval_dict.items():
+                if idx not in existing_approval_dict:
+                    approval_to_insert.append((no_pr, idx, value[1], None, None, today))
+                elif value != existing_approval_dict[idx]:
+                    approval_to_update.append((value[1], None, None, today, no_pr, idx))
+
+            for idx in existing_approval_dict:
+                if idx not in new_approval_dict:
+                    approval_to_delete.append(idx)
+
+            if approval_to_insert:
+                insert_query = '''
+                    INSERT INTO pr_approval (no_pr, approval_no, approval_user_id, status, notes, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                '''
+                cur.executemany(insert_query, approval_to_insert)
+
+            if approval_to_update:
+                update_query = '''
+                    UPDATE pr_approval
+                    SET approval_user_id = %s, status = %s, notes = %s, created_at = %s
+                    WHERE no_pr = %s AND approval_no = %s
+                '''
+                cur.executemany(update_query, approval_to_update)
+
+            if approval_to_delete:
+                delete_query = '''
+                    DELETE FROM pr_approval
+                    WHERE no_pr = %s AND approval_no = %s
+                '''
+                cur.executemany(delete_query, [(no_pr, index) for index in approval_to_delete])
+
+                    
+            # INSERT NEW UPLOADS________________________________________________________________________________________
+            upload_files = request.files.getlist('files[]')
+            upload_docs = []
+            for i, file in enumerate(upload_files):
+                if file:
+                    filename = secure_filename(file.filename)
+                    upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                    file.save(upload_path)
+                    relative_path = os.path.relpath(upload_path, 'static')  # UBAH PATHNYA AGAR TIDAK DITULIS STRING static PADA DATABASE
+                    relative_path = relative_path.replace('\\', '/') # RUBAH BACKSLASH MENJADI SLASH KETIKA INSERT KE DATABASE AGAR DAPAT DI VIEW PADA HTML
+                    upload_docs.append((no_pr, filename, relative_path, user_id, today, user_id, today))
+
+            if upload_docs:
+                insert_docs_query = '''
+                    INSERT INTO pr_docs_reference (no_pr, doc_name, path, created_by, created_at, updated_by, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                '''
+                cur.executemany(insert_docs_query, upload_docs)
+                
+            # UPDATE UPLOAD FILES
+            existing_files = request.files # LIST ATAU GET FILE YANG DIUPLOAD SEBELUMNYA DAPAT VALUENYA BALIKAN DARI DATABASE YANG ADA DI HTML
+            for file_id, file in existing_files.items():
+                if file and 'existing_files[' in file_id: # CHEKC FILE YANG AKAN DIUNGGAH APAKAH EXISITNG ATAU TIDAK PENANDANYA MENGGUNAKAN 'existing_files['
+                    
+                    # Dari file_id seperti existing_files[1], kita mengekstrak ID file. lalu pisahin dengan split('[') buat memisahkan string menjadi daftar berdasarkan [, 
+                    # kemudian [-1][:-1] mengambil bagian terakhir dari daftar (yaitu 1]) dan menghapus karakter ] dari akhirnya, sehingga kita mendapatkan 1.
+                    actual_file_id = file_id.split('[')[-1][:-1]
+                    filename = secure_filename(file.filename)
+                    upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                    file.save(upload_path)
+                    relative_path = os.path.relpath(upload_path, 'static') 
+                    relative_path = relative_path.replace('\\', '/')
+                    update_docs_query = '''
+                        UPDATE pr_docs_reference
+                        SET doc_name = %s, path = %s, updated_by = %s, updated_at = %s
+                        WHERE id = %s
+                    '''
+                    cur.execute(update_docs_query, (filename, relative_path, user_id, today, actual_file_id))
+
+            # DELETE UPLOADS FILE FROM DB
+            deleted_files = request.form.getlist('deleted_files[]')
+            if deleted_files:
+                delete_docs_query = '''
+                    DELETE FROM pr_docs_reference WHERE id IN (%s)
+                ''' % ', '.join(['%s'] * len(deleted_files))
+                cur.execute(delete_docs_query, tuple(deleted_files))
+
             mysql.connection.commit()
+            cur.close()
+            flash('PR updated successfully', 'success')
+            return redirect(url_for('pr.pr_list'))
 
-        cur.close()
-        flash('PR updated successfully', 'success')
-        return redirect(url_for('pr.pr_list'))
+        except Exception as e:
+            mysql.connection.rollback()
+            flash(f'ERROR PR Failed {e}', 'warning')
+            return redirect(url_for('pr.pr_edit'))
 
     # return render_template('pr/pr_edit.html', pr_header=pr_header, pr_details=pr_details, pr_approvals=pr_approvals, entities=entities, departments=departments, approver=approver)
     return render_template('pr/pr_edit.html', pr_header=pr_header, pr_detail=pr_detail, pr_approval=pr_approval, pr_documents=pr_documents, approver=approver)
@@ -1051,6 +1083,7 @@ def pr_edit(no_pr):
 # ====================================================================================================================================
 @pr_blueprint.route('/pr_generate_pdf/<no_pr>', methods=['GET', 'POST'])
 @login_required
+@menu_access_required(4)
 def pr_generate_pdf(no_pr):
     from app import mysql
 
@@ -1070,7 +1103,8 @@ def pr_generate_pdf(no_pr):
             ph.total_budget_approved,
             ph.remarks,
             e.entity,
-            ua.sign_path 
+            ua.sign_path,
+            e.logo_path
         FROM pr_header ph 
         LEFT JOIN entity e ON ph.entity_id = e.id
         LEFT JOIN user_accounts ua ON ph.requester_id = ua.id
@@ -1148,7 +1182,8 @@ def pr_generate_pdf(no_pr):
 
     # MAIN FORM PDF
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    # doc = SimpleDocTemplate(buffer, pagesize=A4)
+    doc = SimpleDocTemplate(buffer, pagesize = A4, rightMargin=20, leftMargin=20, topMargin=12, bottomMargin=12)
     elements = []
     styles = getSampleStyleSheet()
 
@@ -1164,22 +1199,61 @@ def pr_generate_pdf(no_pr):
     table_content_style = ParagraphStyle(name='table_content', alignment=TA_CENTER, fontSize=10)
     table_content_style_left = ParagraphStyle(name='table_content_left', alignment=TA_LEFT, fontSize=10, wordWrap='CJK')
     table_header_style = ParagraphStyle(name='table_header', alignment=TA_CENTER, fontSize=10, fontName='Helvetica-Bold')
+    table_header_left = ParagraphStyle(name='table_header_left', alignment=TA_LEFT, fontSize=10, fontName='Helvetica')
     footer_style = ParagraphStyle(name='footer', fontSize=10, fontName='Helvetica-Bold')
-    name_footer_style = ParagraphStyle(name='footer', fontSize=10, fontName='Helvetica-Bold',  alignment=TA_CENTER)
+    name_footer_style = ParagraphStyle(name='footer', fontSize=14, fontName='Helvetica-Bold',  alignment=TA_CENTER)
     detail_key_style = ParagraphStyle(name='detail_key', fontSize=10, fontName='Helvetica-Bold')
     detail_value_style = ParagraphStyle(name='detail_value', fontSize=10)
     date_approval = ParagraphStyle(name='footer', fontSize=8, fontName='Helvetica', alignment=TA_CENTER)
 
-    # FOR TITLE
+    logo_path = f'static/{pr_header[10]}'
+    logo = Image(logo_path, width=3*cm, height=1.3*cm)
+    detail_data = [
+        [logo, Paragraph('', detail_key_style), Paragraph(f'No. {pr_header[0]}', name_footer_style),],
+    ]
+
+    # PR HEADER TABLE LIST OUTPUT___________________________________________________
+    table_detail = Table(detail_data, colWidths=[4.9*inch, 0.2*inch, 2.8*inch])
+    table_detail.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.white),
+    ]))
+    elements.append(table_detail)
+    elements.append(Spacer(1, 12))
+
+    # line
+    line_data = [
+        ['', '', ''],  # Baris kosong untuk padding
+        ['', '', ''],  # Baris untuk garis pertama
+    ]
+
+    # Tabel line
+    line_table = Table(line_data, colWidths=[4.9*inch, 0.2*inch, 2.8*inch])
+    line_table.setStyle(TableStyle([
+        ('LINEABOVE', (0, 1), (-1, 1), 2, colors.black),  # Garis pertama
+        ('LINEABOVE', (0, 2), (-1, 2), 1, colors.black),  # Garis kedua
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),  # Menghilangkan padding kiri
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),  # Menghilangkan padding kanan
+        ('BOTTOMPADDING', (0, 0), (-1, 0), -12),  # Padding bawah antara garis
+        ('TOPPADDING', (0, 0), (-1, 0), 0),  # Padding atas
+    ]))
+    elements.append(line_table)
+    elements.append(Spacer(1, 2))
+    # END HEADER TABLE LIST OUTPUT__________________________________________________
+
+
+    # FOR TITLEOUTPUT_______________________________________________________________
     title = Paragraph('Purchase Requisition (PR)', title_style)
     elements.append(title)
     elements.append(Spacer(1, 15))
 
     # PR NUMBER
     pr_number = Paragraph(f'(Form Permintaan Barang / Jasa)', centered_style)
-    elements.append(pr_number)
-    elements.append(Spacer(1, 11))
-    pr_number = Paragraph(f'No. PR: {pr_header[0]}', centered_style)
     elements.append(pr_number)
     elements.append(Spacer(1, 11))
 
@@ -1191,11 +1265,10 @@ def pr_generate_pdf(no_pr):
         [Paragraph('Nama Project', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'{pr_header[5]}', detail_value_style)],
         [Paragraph('Sumber Budget / Entity', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'{pr_header[8]}', detail_value_style)],
         [Paragraph('Total Budget Approved', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'Rp. {pr_header[6]:,.2f} (PPN Exclude)', detail_value_style)],
-        [Paragraph('', detail_key_style), Paragraph('', footer_style)]
     ]
 
     # PR HEADER TABLE LIST OUTPUT
-    table_detail = Table(detail_data, colWidths=[3.9*inch, 0.2*inch, 2.8*inch])
+    table_detail = Table(detail_data, colWidths=[2.0*inch, 0.3*inch, 5.3*inch])
     table_detail.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.white),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
@@ -1206,13 +1279,13 @@ def pr_generate_pdf(no_pr):
         ('GRID', (0, 0), (-1, -1), 1, colors.white),
     ]))
     elements.append(table_detail)
-    elements.append(Spacer(1, 12))
+    elements.append(Spacer(1, 22))
+    # END FOR TITLEOUTPUT_______________________________________________________________
 
-    # PR DETAIL DATA
-    # item_description = Paragraph(details[3], ParagraphStyle(name='item_description', alignment=TA_LEFT, fontSize=11, wordWrap='CJK'))
+
+    # PR DETAIL DATA____________________________________________________________________
     table_header_style = ParagraphStyle(name='table_header', alignment=1, fontSize=10, fontName='Helvetica-Bold')
     table_content_style = ParagraphStyle(name='table_content', alignment=1, fontSize=10)
-    item_description_style = ParagraphStyle(name='item_description', alignment=0, fontSize=10, wordWrap='CJK')
 
     # PR DETAIL DATA
     table_data = [[ 
@@ -1226,18 +1299,20 @@ def pr_generate_pdf(no_pr):
         if isinstance(due_date, str):
             due_date = datetime.datetime.strptime(due_date, '%Y-%m-%d')
 
-        item_description = Paragraph(details[3], item_description_style)
+        # item_description = Paragraph(details[3], item_description_style)
+        raw_idesc = details[3]
+        item_description = raw_idesc.replace("NL", "<br/>")
 
         table_data.append([
             Paragraph(str(details[1]), table_content_style),
-            Paragraph(details[2], table_content_style),
-            item_description,
+            Paragraph(details[2], table_content_style_left),
+            Paragraph(item_description,table_header_left),
             Paragraph(str(details[4]), table_content_style),
             Paragraph(due_date.strftime('%d %b %Y') if due_date else 'N/A', table_content_style)
         ])
 
     # PR HEADER TABLE LIST DATA OUTPUT
-    table = Table(table_data, colWidths=[0.5*inch, 1.5*inch, 3*inch, 0.6*inch, 1.5*inch])
+    table = Table(table_data, colWidths=[0.5*inch, 1.2*inch, 4*inch, 0.6*inch, 1.2*inch])
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.lemonchiffon),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
@@ -1249,16 +1324,17 @@ def pr_generate_pdf(no_pr):
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # Align content to the top
     ]))
     elements.append(table)
-    elements.append(Spacer(1, 1))
+    elements.append(Spacer(1, 12))
+    # END DETAIL DATA____________________________________________________________________
 
+
+    # REMARKS____________________________________________________________________________
     remarks_head = [
-        [Paragraph('', detail_key_style), Paragraph('', footer_style)],
         [Paragraph('Remarks:', detail_key_style)],
-        [Paragraph('', detail_key_style), Paragraph('', footer_style)]
     ]
 
     # PR TABLE REMARKS
-    remarks_table = Table(remarks_head, colWidths=[5*inch, 1.8*inch])
+    remarks_table = Table(remarks_head, colWidths=[7.7*inch, 1.8*inch])
     remarks_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.white),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
@@ -1275,11 +1351,13 @@ def pr_generate_pdf(no_pr):
     lampiran = Paragraph(f'1. Lampirkan gambar jika ada', lefted_style)
     urgent = Paragraph(f'2. Urgent / penunjukan vendor langsung harus melampirkan Form Waiver', lefted_style)
     elements.append(lampiran)
-    elements.append(Spacer(1, 12))
+    elements.append(Spacer(1, 3))
     elements.append(urgent)
-    elements.append(Spacer(1, 30))
+    elements.append(Spacer(1, 100))
+    # END REMARKS____________________________________________________________________________
 
-    # PR APPROVAL
+
+    # PR APPROVAL SIGN_______________________________________________________________________
     styles = getSampleStyleSheet()
     # footer_style = styles['Normal']
     footer_style.alignment = 1  # Center alignment
@@ -1289,8 +1367,13 @@ def pr_generate_pdf(no_pr):
     signature_image = Image(requester_sign, width=50, height=50)
 
     # PR APPROVAL SIGNATURE STRUCTURE
+    # table_footer_data = [
+    #     [Paragraph('Dibuat Oleh', footer_style), Paragraph('Disetujui Oleh', footer_style)]
+    # ]
     table_footer_data = [
-        [Paragraph('Dibuat Oleh', footer_style), Paragraph('Disetujui Oleh', footer_style)]
+        [Paragraph('Requested by', footer_style),
+         Paragraph('Approved by', footer_style),
+         '','']
     ]
 
     # SPACING BETWEEN NAME AND SIGNATURE
@@ -1316,7 +1399,7 @@ def pr_generate_pdf(no_pr):
         approval_row.append(Paragraph(approval_name, footer_style))
 
     # ADD 3 ROWS OR MORE
-    while len(approval_row) < 3:
+    while len(approval_row) < 5:
         approval_row.append(Paragraph('', footer_style))
         date_row.append(Paragraph('', date_approval))
         signature_row.append(Paragraph('', footer_style))
@@ -1325,7 +1408,7 @@ def pr_generate_pdf(no_pr):
     table_footer_data.append(date_row)
     table_footer_data.append(approval_row)
 
-    table_footer = Table(table_footer_data, colWidths=[2.1 * inch, 2.0 * inch, 2.0 * inch])
+    table_footer = Table(table_footer_data, colWidths=[1.5 * inch] * 5)
     table_footer.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.white),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
@@ -1333,11 +1416,15 @@ def pr_generate_pdf(no_pr):
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-        ('GRID', (0, 0), (-1, -1), 1, colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # Align content to the top
+        ('SPAN', (1, 0), (4, 0)),
     ]))
 
     elements.append(table_footer)
     elements.append(Spacer(1, 12))
+    # END PR APPROVAL______________________________________________________________________________
+
 
     # FOR LOGS_____________________________________________________________________________________
     elements.append(PageBreak())
@@ -1357,14 +1444,6 @@ def pr_generate_pdf(no_pr):
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
     ]))
-
-    # CREATE LINE
-    # drawing = Drawing(800, 100)  # width, height
-    # line = Line(-50, 50, 480, 50)  # x1, y1, x2, y2
-    # line.strokeColor = colors.gray  # Set warna garis
-    # drawing.add(line)
-    # elements.append(drawing)
-    # elements.append(Spacer(1, 12))
     
     # TITLE LOGS PAGE
     log_title = Paragraph('Document History', table_content_style_left_log)
@@ -1386,13 +1465,13 @@ def pr_generate_pdf(no_pr):
     # Populate the table with pr_logs data
     for index, log in enumerate(pr_logs):
         if log[1] == 'SENT':
-            image = Image('static/entity_logo/sent.png', width=50, height=50)
+            image = Image('static/entity_logo/sent.png', width=30, height=30)
         elif log[1] == 'SIGNED':
-            image = Image('static/entity_logo/signed3.png', width=50, height=50)
+            image = Image('static/entity_logo/signed3.png', width=30, height=30)
         elif log[1] == 'REJECTED':
-            image = Image('static/entity_logo/rejection.png', width=50, height=50)
+            image = Image('static/entity_logo/rejection.png', width=30, height=30)
         else:
-            image = Image('static/entity_logo/done2.png', width=50, height=50)
+            image = Image('static/entity_logo/done2.png', width=30, height=30)
         logs_table_data.append([
             # Paragraph(str(index + 1), table_content_style),
             # Image('static/entity_logo/sent.png', width=50, height=50),
@@ -1417,14 +1496,17 @@ def pr_generate_pdf(no_pr):
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # Align content to the top
     ]))
     elements.append(logs_table)
-    # END LOGS
+    # FOR LOGS_____________________________________________________________________________________
 
+
+    # CREATE ELEMENTS MAIN PDF BUFFER______________________________________________________________
     doc.build(elements)
     doc.setTitle = "PR"
-
     buffer.seek(0)
+    # END BUFFER___________________________________________________________________________________
 
-    # COMBINE PDF FILES REFERENCES__________________________________________________________
+
+    # COMBINE PDF FILES REFERENCES_________________________________________________________________
     main_pdf = PdfReader(buffer)
     pdf_writer = PdfWriter()
 
@@ -1500,7 +1582,7 @@ def pr_generate_pdf(no_pr):
     print("Combined PDF generated successfully.")
 
     # return send_file(buffer, as_attachment=False, download_name=f'{no_pr}_{today}.pdf', mimetype='application/pdf')
-    return send_file(combined_buffer, as_attachment=False, download_name=f'{no_pr}_{today}.pdf', mimetype='application/pdf')
+    return send_file(combined_buffer, as_attachment=False, download_name=f'{no_pr}.pdf', mimetype='application/pdf')
 # ========================================================================================================================================
 
 

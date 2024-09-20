@@ -4,20 +4,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from modules.time import convert_time_to_wib
 from datetime import datetime, timedelta, timezone
-from modules.decorator import login_required, check_access
-from functools import wraps
+from modules.helper import login_required, menu_access_required
 
-
-# ====================================================================================================================================
-# LOCK REQUIRED TO LOGIN
-# ====================================================================================================================================
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'loggedin' not in session:
-            return redirect(url_for('auth.auth'))
-        return f(*args, **kwargs)
-    return decorated_function
 
 
 # BLUEPRINT AUTH VARIABLE
@@ -39,12 +27,13 @@ def get_menus():
 # ====================================================================================================================================
 
 
+
 # ====================================================================================================================================
 # LIST USER
 # ====================================================================================================================================
 @user_blueprint.route('/user_list')
 @login_required
-# @check_access(menu_id=1)
+@menu_access_required(1)
 def user_list():
     from app import mysql
     cursor = mysql.connection.cursor()
@@ -60,15 +49,35 @@ def user_list():
 # REGISTRATION AND ACCESS USER
 # ====================================================================================================================================
 @user_blueprint.route('/register', methods=('GET', 'POST'))
-@user_blueprint.route('/register/<int:user_id>', methods=('GET', 'POST'))
+@user_blueprint.route('/register/<encrypted_user_id>', methods=('GET', 'POST'))
+# @user_blueprint.route('/register/<int:user_id>', methods=('GET', 'POST'))
 @login_required
-def register(user_id=None):
+@menu_access_required(1)
+def register(encrypted_user_id=None):
+# def register(user_id=None):
     from app import mysql
+    from app import decrypt_id
     cursor = mysql.connection.cursor()
+
+    # protect hit link using the id_user
+    user_id = None
+    if encrypted_user_id:
+        user_id = decrypt_id(encrypted_user_id)
+        if not user_id:
+            flash('Invalid User ID', 'danger')
+            return redirect(url_for('user.user_list'))
+            # return "Invalid ID", 400
 
     user = None
     user_menus = []
     user_entities = []
+
+    cursor.execute('SELECT id, menu_name FROM menu')
+    all_menus = cursor.fetchall()
+    cursor.execute('SELECT id, entity_name FROM entity')
+    all_entities = cursor.fetchall()
+    cursor.execute('SELECT id, department, department_name FROM department WHERE entity_id = 1')
+    all_department = cursor.fetchall()
 
     if user_id:
         cursor.execute('SELECT * FROM user_accounts WHERE id=%s', (user_id,))
@@ -109,7 +118,6 @@ def register(user_id=None):
                     INSERT INTO user_accounts (username, email, password, level, created_at, updated_at, created_by, updated_by) 
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 ''', (username, email, generate_password_hash(password), level, current_timestamp, current_timestamp, created_by, created_by))
-                mysql.connection.commit()
                 user_id = cursor.lastrowid
             else:
                 flash('Username or Email already exists', 'danger')
@@ -128,18 +136,10 @@ def register(user_id=None):
             ''', (user_id, entity_id, current_timestamp, current_timestamp))
 
         mysql.connection.commit()
-        cursor.close()
         flash('User saved successfully', 'success')
         return redirect(url_for('user.user_list'))
 
-    cursor.execute('SELECT id, menu_name FROM menu')
-    all_menus = cursor.fetchall()
-    cursor.execute('SELECT id, entity_name FROM entity')
-    all_entities = cursor.fetchall()
-    cursor.execute('SELECT id, department, department_name FROM department WHERE entity_id = 1')
-    all_department = cursor.fetchall()
     cursor.close()
-
     return render_template('users/user_add.html', user=user, user_menus=user_menus, user_entities=user_entities, all_menus=all_menus, all_entities=all_entities, all_department=all_department)
 # ====================================================================================================================================
 
@@ -147,11 +147,22 @@ def register(user_id=None):
 # ====================================================================================================================================
 # CHANGE USER PASSWORD AS A USER
 # ====================================================================================================================================
-@user_blueprint.route('/user_change_password/<int:id>', methods=['GET', 'POST'])
+# @user_blueprint.route('/user_change_password/<int:id>', methods=['GET', 'POST'])
+@user_blueprint.route('/user_change_password/<encrypted_user_id>',  methods=['GET', 'POST'])
 @login_required
-def user_change_password(id):
+# @menu_access_required(1)
+def user_change_password(encrypted_user_id=None):
     from app import mysql
+    from app import decrypt_id
     cursor = mysql.connection.cursor()
+
+    id = None
+    if encrypted_user_id:
+        id = decrypt_id(encrypted_user_id)
+        if not id:
+            flash('Invalid User ID', 'danger')
+            # return redirect(url_for('user.user_list'))
+            return f"{encrypted_user_id}"
 
     cursor.execute('SELECT password, sign_path FROM user_accounts WHERE id=%s', (id,))
     user = cursor.fetchone()
@@ -196,7 +207,7 @@ def user_change_password(id):
 
             mysql.connection.commit()
             flash('User updated successfully', 'success')
-            return redirect(url_for('user.user_list'))
+            return redirect(url_for('index'))
         else:
             flash('Current password is incorrect', 'warning')
 
@@ -205,12 +216,15 @@ def user_change_password(id):
     cursor.execute('SELECT id, username, email, level, sign_path FROM user_accounts WHERE id=%s', (id,))
     user = cursor.fetchone()
     user = list(user)
-    user[4] = user[4].replace("static/", "")
+    if user[4] is not None:
+        user[4] = user[4].replace("static/", "")
+    else:
+        pass
     cursor.close()
 
     if user is None:
         flash('User not found', 'warning')
-        return redirect(url_for('user.list_users'))
+        return redirect(url_for('index'))
 
     return render_template('users/user_change_password.html', user=user)
 
@@ -239,6 +253,7 @@ def user_settings():
 # ====================================================================================================================================
 @user_blueprint.route('/user_edit/<int:user_id>', methods=('GET', 'POST'))
 @login_required
+@menu_access_required(1)
 def user_edit(user_id):
     from app import mysql
     
@@ -320,6 +335,7 @@ def user_edit(user_id):
 # ====================================================================================================================================
 @user_blueprint.route('/delete_user/<int:id>', methods=['POST'])
 @login_required
+@menu_access_required(1)
 def delete_user(id):
     from app import mysql
     cursor = mysql.connection.cursor()

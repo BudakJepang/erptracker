@@ -71,7 +71,10 @@
                             <td>{{ user[6] }}</td>
                             <td>{{ user[7] }}</td>
                             <td>
-                              <a href="{{ url_for('user.register', user_id=user[0]) }}" class="btn btn-default btn-sm" title="Edit User">
+                              <!-- <a href="{{ url_for('user.register', user_id=user[0]) }}" class="btn btn-default btn-sm" title="Edit User">
+                                <i class="fa fa-edit"></i>
+                              </a> -->
+                              <a href="{{ url_for('user.register', encrypted_user_id=encrypt_id(user[0])) }}" class="btn btn-default btn-sm" title="Edit User">
                                 <i class="fa fa-edit"></i>
                               </a>
                               <button type="button" class="btn btn-outline-danger btn-sm" title="Delete User" data-toggle="modal" data-target="#modal-danger" data-id="{{ user[0] }}" data-username="{{ user[1] }}" data-email="{{ user[2] }}" data-level="{{ user[3] }}">
@@ -187,15 +190,6 @@
 <script src="static/plugins/jquery/jquery.min.js"></script><!-- Bootstrap JS -->
 <script src="static/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          toastr["{{ category }}"]("{{ message | safe }}");
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-  });
 
   $('#modal-danger').on('show.bs.modal', function (event) {
     var button = $(event.relatedTarget); // Button that triggered the modal

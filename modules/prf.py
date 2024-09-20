@@ -18,22 +18,24 @@ from datetime import datetime
 from flask_mysqldb import MySQL, MySQLdb
 from werkzeug.utils import secure_filename
 from PyPDF2 import PdfReader, PdfWriter
-from modules.mail import approval_notification_mail, prf_alert_mail, prf_send_approval_manual
+from modules.mail import prf_alert_mail, prf_send_approval_manual, prf_alert_mail_done
 from modules.logs import insert_pr_log
 import socket
 import logging
 import traceback
+from modules.helper import login_required, menu_access_required
+
 
 # LOCK ADDRESS LOGIN REQUIRED  ____________________________________________________________
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'loggedin' not in session:
-            next_url = request.url
-            logging.debug(f"Redirecting to login, next URL: {next_url}")
-            return redirect(url_for('auth.login', next=next_url))
-        return f(*args, **kwargs)
-    return decorated_function
+# def login_required(f):
+#     @wraps(f)
+#     def decorated_function(*args, **kwargs):
+#         if 'loggedin' not in session:
+#             next_url = request.url
+#             logging.debug(f"Redirecting to login, next URL: {next_url}")
+#             return redirect(url_for('auth.login', next=next_url))
+#         return f(*args, **kwargs)
+#     return decorated_function
 
 # IP ADDRESS
 device = socket.gethostname()
@@ -128,6 +130,7 @@ def process_and_insert_logs(no_prf, requester_id, ip_address, user_id, functions
             description = f'Sign by {first_email_description_app}'
             insert_pr_log(no_prf, requester_id, "SIGNED", description, ip_address, today)
             insert_pr_log(no_prf, requester_id, "COMPLETED", "The document has been completed.", ip_address, today)
+            prf_alert_mail_done(no_prf, "data-tech@byorange.co.id", today)
         elif email_descriptions_app:
             first_email_description_app = email_descriptions_app[0]
             description = f'Sign by {first_email_description_app}'
@@ -185,11 +188,13 @@ prf_blueprint = Blueprint('prf', __name__)
 current_date = datetime.now()
 today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
+
 # ====================================================================================================================================
 # PRF LIST
 # ====================================================================================================================================
 @prf_blueprint.route('/prf_list')
 @login_required
+@menu_access_required(5)
 def prf_list():
     from app import mysql
     user_id = session.get('id', 'system')
@@ -203,7 +208,7 @@ def prf_list():
             ph.no_prf,
             ph.vendor_name,
             ua2.username,
-            d.departement_name,
+            d.department_name,
             ph.request_date,
             ph.currency,
             ph.amount,
@@ -212,7 +217,7 @@ def prf_list():
             LEFT JOIN prf_approval pa ON ph.no_prf  = pa.no_prf 
             LEFT JOIN user_accounts ua ON pa.approval_user_id  = ua.id
             LEFT JOIN user_accounts ua2 ON ph.requester_user_id = ua2.id
-            LEFT JOIN departement d ON ph.department = d.departement 
+            LEFT JOIN department d ON ph.department = d.department 
             WHERE ph.no_prf IN (
                 SELECT DISTINCT pa_inner.no_prf
                 FROM prf_approval pa_inner
@@ -229,8 +234,13 @@ def prf_list():
         return "ERROR! while fetching data"
 
     return render_template('prf/prf_list.html', data=data)
+# ====================================================================================================================================
 
-# PRF ADD
+
+
+# ====================================================================================================================================
+# PRF SUBMIT
+# ====================================================================================================================================
 def get_prf_number(entity, department):
     current_month = current_date.month
     current_year = current_date.year
@@ -271,6 +281,7 @@ def generate_prf():
 # PRF SUBMIT
 @prf_blueprint.route('/prf_add', methods = ['POST', 'GET'])
 @login_required
+@menu_access_required(5)
 def prf_add():
     prf_number = None
     from app import mysql
@@ -407,14 +418,20 @@ def prf_add():
             cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
             query_single_mail = '''
                 SELECT 
-                    no_prf,
-                    approval_no,
-                    approval_user_id,
+                    pa.no_prf,
+                    pa.approval_no,
+                    pa.approval_user_id,
                     ua.username,
-                    ua.email 
+                    ua.email,
+                    ph.vendor_name,
+                    ph.department,
+                    ph.amount,
+                    e.entity_name
                 FROM prf_approval pa 
                 LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
-                WHERE no_prf = %s
+                LEFT JOIN prf_header ph ON pa.no_prf = ph.no_prf 
+                LEFT JOIN entity e ON ph.entity_id = e.id
+                WHERE pa.no_prf = %s
                 ORDER BY 2 ASC
                 LIMIT 1
             '''
@@ -423,7 +440,12 @@ def prf_add():
             cur.close()
 
             mail_approval_recipient = first_approval_mail['email']
-            prf_alert_mail(no_prf, mail_approval_recipient)
+            mail_approval_name = first_approval_mail['username']
+            mail_vendor_name = first_approval_mail['vendor_name']
+            mail_department_name = first_approval_mail['department']
+            mail_entity_name = first_approval_mail['entity_name']
+            mail_amount = first_approval_mail['amount']
+            prf_alert_mail(no_prf, mail_approval_recipient, mail_approval_name, mail_vendor_name, mail_department_name, mail_entity_name, mail_amount, today)
             process_and_insert_logs(no_prf, requester_id, ip_address, None, functions='submit')
             mysql.connection.commit()
             flash('New PRF has been added', 'success')
@@ -443,6 +465,7 @@ def prf_add():
 # ====================================================================================================================================
 @prf_blueprint.route('/prf_edit/<no_prf>', methods = ['GET', 'POST'])
 @login_required
+@menu_access_required(5)
 def prf_edit(no_prf):
     from app import mysql
     cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
@@ -655,6 +678,7 @@ def prf_edit(no_prf):
             return redirect(url_for('prf.prf_edit'))
 
     return render_template('prf/prf_edit.html', prf_header=prf_header, prf_approval=prf_approval, prf_documents=prf_documents, departments=departments, vendors=vendors, currencies=currencies, approver=approver)
+# ====================================================================================================================================
 
 
 # ====================================================================================================================================
@@ -662,6 +686,7 @@ def prf_edit(no_prf):
 # ====================================================================================================================================
 @prf_blueprint.route('/prf_detail/<no_prf>', methods = ['GET', 'POST'])
 @login_required
+@menu_access_required(5)
 def prf_detail(no_prf):
     from app import mysql
     cur = mysql.connection.cursor()
@@ -678,7 +703,7 @@ def prf_detail(no_prf):
             swift_code_bank,
             currency,
             amount,
-            d.departement_name,
+            d.department_name,
             supporting_doc_aggreement,
             supporting_doc_quotation,
             supporting_doc_purchase,
@@ -694,7 +719,7 @@ def prf_detail(no_prf):
             e.logo_path
         FROM prf_header ph 
         LEFT JOIN user_accounts ua ON ph.requester_user_id = ua.id 
-        LEFT JOIN departement d ON ph.department = d.departement
+        LEFT JOIN department d ON ph.department = d.department
         LEFT JOIN currency c ON ph.currency = c.iso_code 
         LEFT JOIN entity e ON ph.entity_id = e.id
         WHERE no_prf = %s
@@ -754,7 +779,7 @@ def prf_send_mail_manual(approval_id, no_prf):
             ua.username,
             ph.currency,
             ph.amount,
-            d.departement_name,
+            d.department_name,
             ph.request_date,
             c.symbol,
             ph.requester_user_id,
@@ -765,7 +790,7 @@ def prf_send_mail_manual(approval_id, no_prf):
         FROM prf_header ph 
         LEFT JOIN prf_approval pa ON ph.no_prf = pa.no_prf
         LEFT JOIN user_accounts ua ON ph.requester_user_id = ua.id 
-        LEFT JOIN departement d ON ph.department = d.departement
+        LEFT JOIN department d ON ph.department = d.department
         LEFT JOIN currency c ON ph.currency = c.iso_code 
         LEFT JOIN entity e ON ph.entity_id = e.id 
         LEFT JOIN user_accounts ua2 ON pa.approval_user_id = ua2.id 
@@ -779,7 +804,7 @@ def prf_send_mail_manual(approval_id, no_prf):
     today = datetime.now().strftime('%d/%b/%Y %H:%M:%S')
     vendor_name = data_email['vendor_name']
     nama_entity = data_email['entity_name']
-    department = data_email['departement_name']
+    department = data_email['department_name']
     nama_requester = data_email['username']
     budget = data_email['amount']
     tanggal_request = data_email['request_date']
@@ -813,20 +838,33 @@ def send_sequence_mail_prf(no_prf):
             pa.approval_no,
             pa.approval_user_id,
             ua.email,
-            pa.status 
+            pa.status,
+            ph.vendor_name,
+            ph.department,
+            ph.amount,
+            ua.username,
+            e.entity_name
         FROM prf_header ph 
         LEFT JOIN prf_approval pa ON ph.no_prf = pa.no_prf
         LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id 
+        LEFT JOIN entity e ON ph.entity_id = e.id
         WHERE pa.status IS NULL
         AND ph.no_prf = %s
-        ORDER BY approval_no DESC
+        ORDER BY pa.approval_no ASC
         LIMIT 1
     '''
     cur.execute(query, [no_prf])
     data = cur.fetchone()
     cur.close()
 
-    return data['email'] if data else None
+    mail_approval_recipient = data['email'] if data else None
+    mail_approval_name = data['username'] if data else None
+    mail_vendor_name = data['vendor_name'] if data else None
+    mail_department_name = data['department'] if data else None
+    mail_entity_name = data['entity_name'] if data else None
+    mail_amount = data['amount'] if data else None
+
+    return mail_approval_recipient, mail_approval_name, mail_vendor_name, mail_department_name, mail_entity_name, mail_amount
 
 # APPROVED________________________________________________________________
 @prf_blueprint.route('/prf_approved/<no_prf>', methods = ['GET', 'POST'])
@@ -847,10 +885,10 @@ def prf_approved(no_prf):
             '''
 
             cur.execute(update_query, (appr_notes, no_prf, user_id))
-            mail_next_approval = send_sequence_mail_prf(no_prf)
+            mail_approval_recipient, mail_approval_name, mail_vendor_name, mail_department_name, mail_entity_name, mail_amount = send_sequence_mail_prf(no_prf)
 
-            if mail_next_approval:
-                prf_alert_mail(no_prf, mail_next_approval)
+            if mail_approval_recipient:
+                prf_alert_mail(no_prf, mail_approval_recipient, mail_approval_name, mail_vendor_name, mail_department_name, mail_entity_name, mail_amount, today)
                 process_and_insert_logs(no_prf, user_id, ip_address, user_id, functions='sign')
                 process_and_insert_logs(no_prf, user_id, ip_address, user_id, functions='submit')
             else:
@@ -871,6 +909,7 @@ def prf_approved(no_prf):
 # REJECTED________________________________________________________________
 @prf_blueprint.route('/prf_rejected/<no_prf>', methods = ['GET', 'POST'])
 @login_required
+@menu_access_required(5)
 def prf_rejected(no_prf):
     from app import mysql
 
@@ -908,6 +947,7 @@ def prf_rejected(no_prf):
 # ====================================================================================================================================
 @prf_blueprint.route('/prf_generate_pdf/<no_prf>', methods = ['GET', 'POST'])
 @login_required
+@menu_access_required(5)
 def prf_generate_pdf(no_prf):
     from app import mysql
     cur = mysql.connection.cursor()
@@ -926,7 +966,7 @@ def prf_generate_pdf(no_prf):
             swift_code_bank,
             currency,
             amount,
-            d.departement_name,
+            d.department_name,
             supporting_doc_aggreement,
             supporting_doc_quotation,
             supporting_doc_purchase,
@@ -943,7 +983,7 @@ def prf_generate_pdf(no_prf):
             ua.sign_path
         FROM prf_header ph 
         LEFT JOIN user_accounts ua ON ph.requester_user_id = ua.id 
-        LEFT JOIN departement d ON ph.department = d.departement
+        LEFT JOIN department d ON ph.department = d.department
         LEFT JOIN currency c ON ph.currency = c.iso_code 
         LEFT JOIN entity e ON ph.entity_id = e.id 
         WHERE no_prf = %s
@@ -1001,18 +1041,19 @@ def prf_generate_pdf(no_prf):
     styles = getSampleStyleSheet()
 
     # CUSTOM STYLE
-    centered_style = ParagraphStyle(name='centered', alignment=TA_CENTER, fontSize=10, fontName='Helvetica')
-    lefted_style = ParagraphStyle(name='lefted', alignment=TA_LEFT, fontSize=10, fontName='Helvetica')
-    title_style = ParagraphStyle(name='title', alignment=TA_CENTER, fontSize=20, fontName='Helvetica-Bold')
-    table_content_style = ParagraphStyle(name='table_content', alignment=TA_RIGHT, fontSize=14, fontName='Helvetica-Bold')
+    centered_style = ParagraphStyle(name='centered', alignment=TA_CENTER, fontSize=11, fontName='Times-Roman')
+    lefted_style = ParagraphStyle(name='lefted', alignment=TA_LEFT, fontSize=11, fontName='Times-Roman')
+    title_style = ParagraphStyle(name='title', alignment=TA_CENTER, fontSize=20, fontName='Times-Bold')
+    table_content_style = ParagraphStyle(name='table_content', alignment=TA_RIGHT, fontSize=14, fontName='Times-Bold')
     table_content_style_left = ParagraphStyle(name='table_content_left', alignment=TA_JUSTIFY, fontSize=10, wordWrap='CJK')
-    table_header_style = ParagraphStyle(name='table_header', alignment=TA_CENTER, fontSize=10, fontName='Helvetica-Bold')
-    log_value_style = ParagraphStyle(name='log_value_style', alignment=TA_CENTER, fontSize=10, fontName='Helvetica')
-    footer_style = ParagraphStyle(name='footer', fontSize=10, fontName='Helvetica-Bold')
-    name_footer_style = ParagraphStyle(name='footer', fontSize=10, fontName='Helvetica-Bold',  alignment=TA_CENTER)
-    detail_key_style = ParagraphStyle(name='detail_key', fontSize=10, fontName='Helvetica-Bold')
-    detail_value_style = ParagraphStyle(name='detail_value', fontSize=10)
-    date_approval = ParagraphStyle(name='footer', fontSize=8, fontName='Helvetica', alignment=TA_CENTER)
+    table_header_style = ParagraphStyle(name='table_header', alignment=TA_CENTER, fontSize=11, fontName='Times-Bold')
+    log_value_style = ParagraphStyle(name='log_value_style', alignment=TA_CENTER, fontSize=11, fontName='Times-Roman')
+    log_value_style_left = ParagraphStyle(name='log_value_style_left', alignment=TA_LEFT, fontSize=11, fontName='Times-Roman')
+    footer_style = ParagraphStyle(name='footer', fontSize=11, fontName='Times-Bold')
+    name_footer_style = ParagraphStyle(name='footer', fontSize=11, fontName='Times-Bold',  alignment=TA_CENTER)
+    detail_key_style = ParagraphStyle(name='detail_key', fontSize=11, fontName='Times-Bold')
+    detail_value_style = ParagraphStyle(name='detail_value', fontSize=11, fontName='Times-Roman')
+    date_approval = ParagraphStyle(name='footer', fontSize=8, fontName='Times-Roman', alignment=TA_CENTER)
 
     logo_path = f'static/{prf_header[22]}'
     logo = Image(logo_path, width=3*cm, height=1.3*cm)
@@ -1044,7 +1085,7 @@ def prf_generate_pdf(no_prf):
     # Tabel line
     line_table = Table(line_data, colWidths=[4.9*inch, 0.2*inch, 2.8*inch])
     line_table.setStyle(TableStyle([
-        ('LINEABOVE', (0, 1), (-1, 1), 3, colors.black),  # Garis pertama
+        ('LINEABOVE', (0, 1), (-1, 1), 2, colors.black),  # Garis pertama
         ('LINEABOVE', (0, 2), (-1, 2), 1, colors.black),  # Garis kedua
         ('LEFTPADDING', (0, 0), (-1, -1), 0),  # Menghilangkan padding kiri
         ('RIGHTPADDING', (0, 0), (-1, -1), 0),  # Menghilangkan padding kanan
@@ -1077,7 +1118,7 @@ def prf_generate_pdf(no_prf):
         ('BACKGROUND', (0, 0), (-1, 0), colors.white),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Times-Bold'),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('BACKGROUND', (0, 1), (-1, -1), colors.white),
         ('GRID', (0, 0), (-1, -1), 1, colors.white),
@@ -1117,7 +1158,7 @@ def prf_generate_pdf(no_prf):
         ('BACKGROUND', (0, 0), (-1, 0), colors.white),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Times-Bold'),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('BACKGROUND', (0, 1), (-1, -1), colors.white),
         ('GRID', (0, 0), (-1, -1), 1, colors.white),
@@ -1156,7 +1197,7 @@ def prf_generate_pdf(no_prf):
         ('BACKGROUND', (0, 0), (-1, 0), colors.white),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Times-Bold'),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('BACKGROUND', (0, 1), (-1, -1), colors.white),
         ('GRID', (0, 0), (-1, -1), 1, colors.white),
@@ -1195,7 +1236,7 @@ def prf_generate_pdf(no_prf):
         ('BACKGROUND', (0, 0), (-1, 0), colors.white),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Times-Bold'),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('BACKGROUND', (0, 1), (-1, -1), colors.white),
         ('GRID', (0, 0), (-1, -1), 1, colors.white),
@@ -1274,7 +1315,7 @@ def prf_generate_pdf(no_prf):
         ('BACKGROUND', (0, 0), (-1, 0), colors.white),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Times-Bold'),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('BACKGROUND', (0, 1), (-1, -1), colors.white),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
@@ -1317,19 +1358,19 @@ def prf_generate_pdf(no_prf):
     # Populate the table with prf_logs data
     for index, log in enumerate(prf_logs):
         if log[1] == 'SENT':
-            image = Image('static/entity_logo/sent.png', width=50, height=50)
+            image = Image('static/entity_logo/sent.png', width=30, height=30)
         elif log[1] == 'SIGNED':
-            image = Image('static/entity_logo/signed3.png', width=50, height=50)
+            image = Image('static/entity_logo/signed3.png', width=30, height=30)
         elif log[1] == 'REJECTED':
-            image = Image('static/entity_logo/rejection.png', width=50, height=50)
+            image = Image('static/entity_logo/rejection.png', width=30, height=30)
         else:
-            image = Image('static/entity_logo/done2.png', width=50, height=50)
+            image = Image('static/entity_logo/done2.png', width=30, height=30)
         logs_table_data.append([
             # Paragraph(str(index + 1), table_content_style),
             # Image('static/entity_logo/sent.png', width=50, height=50),
             image,
             # Paragraph(log[1], table_content_style),
-            Paragraph(log[2], log_value_style),
+            Paragraph(log[2], log_value_style_left),
             Paragraph(log[3], log_value_style),
             Paragraph(log[4].strftime('%d %b %Y %H:%M:%S'), log_value_style)
         ])
@@ -1341,7 +1382,7 @@ def prf_generate_pdf(no_prf):
         ('BACKGROUND', (0, 0), (-1, 0), colors.gray),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Times-Bold'),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('BACKGROUND', (0, 1), (-1, -1), colors.white),
         ('GRID', (0, 0), (-1, -1), 1, colors.white),
@@ -1412,5 +1453,5 @@ def prf_generate_pdf(no_prf):
     combine_buffer.seek(0)
     print("COMBINE SUCCESSFULLY")
 
-    return send_file(combine_buffer, as_attachment=False, download_name=f'{no_prf}_{current_datetime}.pdf', mimetype='application/pdf')
+    return send_file(combine_buffer, as_attachment=False, download_name=f'{no_prf}.pdf', mimetype='application/pdf')
 # ====================================================================================================================================

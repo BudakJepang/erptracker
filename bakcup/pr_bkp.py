@@ -2927,3 +2927,463 @@ QUERY = '''
             ))
             ORDER BY ph.created_at DESC;
 '''
+
+
+# ====================================================================================================================================
+# GENERATE PR TO PDF 20240910
+# ====================================================================================================================================
+@pr_blueprint.route('/pr_generate_pdf/<no_pr>', methods=['GET', 'POST'])
+@login_required
+def pr_generate_pdf(no_pr):
+    from app import mysql
+
+    cur = mysql.connection.cursor()
+    today = datetime.now().strftime('%Y-%m-%d')
+    requester_id = session.get('id', 'system')
+    # DEFINE ALL TABLE RELATE TO PR
+    # GET PR_HEADER
+    cur.execute('''
+        SELECT DISTINCT 
+            ph.no_pr,
+            DATE(ph.tanggal_permintaan)tanggal_permintaan,
+            ph.requester_id,
+            ph.requester_name,
+            ph.entity_id,
+            ph.nama_project,
+            ph.total_budget_approved,
+            ph.remarks,
+            e.entity,
+            ua.sign_path 
+        FROM pr_header ph 
+        LEFT JOIN entity e ON ph.entity_id = e.id
+        LEFT JOIN user_accounts ua ON ph.requester_id = ua.id
+        WHERE ph.no_pr = %s''', (no_pr, ))
+
+    pr_header = cur.fetchone()
+
+    # GET PR_DETAIL
+    cur.execute('''
+        SELECT
+            no_pr,
+            item_no,
+            nama_item,
+            spesifikasi,
+            qty,
+            tanggal
+        FROM pr_detail
+        WHERE no_pr = %s''', (no_pr, ))
+
+    pr_details = cur.fetchall()
+
+    # GET PR_APPROVAL
+    cur.execute("SELECT sign_path FROM user_accounts WHERE id = %s",(requester_id,))
+    reqester_ttd = cur.fetchall()
+
+    cur.execute('''
+        SELECT 
+            pa.no_pr,
+            pa.approval_no,
+            pa.approval_user_id,
+            ua.username,
+            pa.status,
+            pa.notes,
+            CASE 
+                WHEN pa.status = 'APPROVED' THEN DATE(pa.created_at)
+                WHEN pa.status = 'REJECTED' THEN DATE(pa.created_at)
+                ELSE 'PENDING'
+            END approval_date,
+            CASE 
+                WHEN pa.status = 'APPROVED' THEN ua.sign_path
+                ELSE NULL
+            END sign_path
+        FROM pr_approval pa
+        LEFT JOIN user_accounts ua ON pa.approval_user_id = ua.id
+        WHERE no_pr = %s
+    ''', (no_pr, ))
+
+    pr_approval = cur.fetchall()
+
+    # GET PR_DOCUMENTS
+    cur.execute('''
+        SELECT 
+            no_pr,
+            doc_name,
+            `path`
+        FROM pr_docs_reference
+        WHERE no_pr = %s
+    ''', (no_pr, ))
+
+    pr_documents = cur.fetchall()
+
+    # LOG PR PDF
+    cur.execute('''
+    SELECT 
+        no_pr ,
+        status,
+        description,
+        ip_address ,
+        created_at 
+    FROM pr_logs pl 
+    WHERE no_pr = %s
+    ''', (no_pr, ))
+
+    pr_logs = cur.fetchall()
+
+    # MAIN FORM PDF
+    buffer = BytesIO()
+    # doc = SimpleDocTemplate(buffer, pagesize=A4)
+    doc = SimpleDocTemplate(buffer, pagesize = A4, rightMargin=12, leftMargin=12, topMargin=32, bottomMargin=22)
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # PARSE DATE
+    created_at = pr_header[1] if pr_header[1] else None
+    if isinstance(created_at, str):
+        created_at = datetime.datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')
+
+    # CUSTOM STYLE
+    centered_style = ParagraphStyle(name='centered', alignment=TA_CENTER, fontSize=10, fontName='Helvetica')
+    lefted_style = ParagraphStyle(name='lefted', alignment=TA_LEFT, fontSize=10, fontName='Helvetica')
+    title_style = ParagraphStyle(name='title', alignment=TA_CENTER, fontSize=20, fontName='Helvetica-Bold')
+    table_content_style = ParagraphStyle(name='table_content', alignment=TA_CENTER, fontSize=10)
+    table_content_style_left = ParagraphStyle(name='table_content_left', alignment=TA_LEFT, fontSize=10, wordWrap='CJK')
+    table_header_style = ParagraphStyle(name='table_header', alignment=TA_CENTER, fontSize=10, fontName='Helvetica-Bold')
+    footer_style = ParagraphStyle(name='footer', fontSize=10, fontName='Helvetica-Bold')
+    name_footer_style = ParagraphStyle(name='footer', fontSize=10, fontName='Helvetica-Bold',  alignment=TA_CENTER)
+    detail_key_style = ParagraphStyle(name='detail_key', fontSize=10, fontName='Helvetica-Bold')
+    detail_value_style = ParagraphStyle(name='detail_value', fontSize=10)
+    date_approval = ParagraphStyle(name='footer', fontSize=8, fontName='Helvetica', alignment=TA_CENTER)
+
+    # FOR TITLE
+    title = Paragraph('Purchase Requisition (PR)', title_style)
+    elements.append(title)
+    elements.append(Spacer(1, 15))
+
+    # PR NUMBER
+    pr_number = Paragraph(f'(Form Permintaan Barang / Jasa)', centered_style)
+    elements.append(pr_number)
+    elements.append(Spacer(1, 11))
+    pr_number = Paragraph(f'No. PR: {pr_header[0]}', centered_style)
+    elements.append(pr_number)
+    elements.append(Spacer(1, 11))
+
+    # PR HEADER DATA
+    detail_data = [
+        [Paragraph('', detail_key_style), Paragraph('', footer_style)],
+        [Paragraph('Tanggal Permintaan', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'{created_at.strftime("%d %B %Y") if created_at else "N/A"}', detail_value_style)],
+        [Paragraph('User / Requester', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'{pr_header[3]}', detail_value_style)],
+        [Paragraph('Nama Project', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'{pr_header[5]}', detail_value_style)],
+        [Paragraph('Sumber Budget / Entity', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'{pr_header[8]}', detail_value_style)],
+        [Paragraph('Total Budget Approved', detail_key_style), Paragraph(':', detail_key_style), Paragraph(f'Rp. {pr_header[6]:,.2f} (PPN Exclude)', detail_value_style)],
+        [Paragraph('', detail_key_style), Paragraph('', footer_style)]
+    ]
+
+    # PR HEADER TABLE LIST OUTPUT
+    table_detail = Table(detail_data, colWidths=[3.9*inch, 0.2*inch, 2.8*inch])
+    table_detail.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.white),
+    ]))
+    elements.append(table_detail)
+    elements.append(Spacer(1, 12))
+
+    # PR DETAIL DATA
+    # item_description = Paragraph(details[3], ParagraphStyle(name='item_description', alignment=TA_LEFT, fontSize=11, wordWrap='CJK'))
+    table_header_style = ParagraphStyle(name='table_header', alignment=1, fontSize=10, fontName='Helvetica-Bold')
+    table_content_style = ParagraphStyle(name='table_content', alignment=1, fontSize=10)
+    item_description_style = ParagraphStyle(name='item_description', alignment=0, fontSize=10, wordWrap='CJK')
+
+    # PR DETAIL DATA
+    table_data = [[ 
+          Paragraph('No', table_header_style), 
+          Paragraph('Nama Barang/Jasa', table_header_style), 
+          Paragraph('Spesifikasi Barang/Jasa', table_header_style), Paragraph('QTY', table_header_style), 
+          Paragraph('Tanggal dibutuhkan', table_header_style) ]]
+
+    for details in pr_details:
+        due_date = details[5] if details[5] else None
+        if isinstance(due_date, str):
+            due_date = datetime.datetime.strptime(due_date, '%Y-%m-%d')
+
+        item_description = Paragraph(details[3], item_description_style)
+
+        table_data.append([
+            Paragraph(str(details[1]), table_content_style),
+            Paragraph(details[2], table_content_style),
+            item_description,
+            Paragraph(str(details[4]), table_content_style),
+            Paragraph(due_date.strftime('%d %b %Y') if due_date else 'N/A', table_content_style)
+        ])
+
+    # PR HEADER TABLE LIST DATA OUTPUT
+    table = Table(table_data, colWidths=[0.5*inch, 1.5*inch, 3*inch, 0.6*inch, 1.5*inch])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lemonchiffon),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # Align content to the top
+    ]))
+    elements.append(table)
+    elements.append(Spacer(1, 1))
+
+    remarks_head = [
+        [Paragraph('', detail_key_style), Paragraph('', footer_style)],
+        [Paragraph('Remarks:', detail_key_style)],
+        [Paragraph('', detail_key_style), Paragraph('', footer_style)]
+    ]
+
+    # PR TABLE REMARKS
+    remarks_table = Table(remarks_head, colWidths=[5*inch, 1.8*inch])
+    remarks_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.white),
+    ]))
+    elements.append(remarks_table)
+    elements.append(Spacer(1, 1))
+
+    # REMKARS FILES  
+    lampiran = Paragraph(f'1. Lampirkan gambar jika ada', lefted_style)
+    urgent = Paragraph(f'2. Urgent / penunjukan vendor langsung harus melampirkan Form Waiver', lefted_style)
+    elements.append(lampiran)
+    elements.append(Spacer(1, 12))
+    elements.append(urgent)
+    elements.append(Spacer(1, 30))
+
+    # PR APPROVAL
+    styles = getSampleStyleSheet()
+    # footer_style = styles['Normal']
+    footer_style.alignment = 1  # Center alignment
+
+    # GET REQUESTER APPROVAL NULL OR EXIST SIGN
+    requester_sign = pr_header[9] if pr_header[9] else 'static/uploads/white.png'
+    signature_image = Image(requester_sign, width=50, height=50)
+
+    # PR APPROVAL SIGNATURE STRUCTURE
+    table_footer_data = [
+        [Paragraph('Dibuat Oleh', footer_style), Paragraph('Disetujui Oleh', footer_style)]
+    ]
+
+    # SPACING BETWEEN NAME AND SIGNATURE
+    for x in range(0):
+        table_footer_data.append([Paragraph('', footer_style), Paragraph('', footer_style), Paragraph('', footer_style)])
+
+    # ADD REQUESTER SIGNATURE AND NAME
+    signature_row = [signature_image]
+    date_row = [Paragraph('', date_approval)]
+    approval_row = [Paragraph(f'({pr_header[3]})', footer_style)]
+
+    # ADD APPROVAL SIGNATURE DATE APPROVED AND NAMES
+    for approval in pr_approval:
+        approval_date = str(approval[6]) if str(approval[6]) else ''
+        approval_name = f'({approval[3]})' if approval[3] else ''
+        sign_path = approval[7] if approval[7] else 'static/uploads/white.png'
+
+        # SIGNATURE DATA
+        signature_row.append(Image(sign_path, width=50, height=50))
+        # DATE APPROVED
+        date_row.append(Paragraph(approval_date, date_approval))
+        # APRROVAL NAME DATA
+        approval_row.append(Paragraph(approval_name, footer_style))
+
+    # ADD 3 ROWS OR MORE
+    while len(approval_row) < 5:
+        approval_row.append(Paragraph('', footer_style))
+        date_row.append(Paragraph('', date_approval))
+        signature_row.append(Paragraph('', footer_style))
+
+    table_footer_data.append(signature_row)
+    table_footer_data.append(date_row)
+    table_footer_data.append(approval_row)
+
+    table_footer = Table(table_footer_data, colWidths=[1.5 * inch] * 5)
+    table_footer.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # Align content to the top
+    ]))
+
+    elements.append(table_footer)
+    elements.append(Spacer(1, 12))
+
+    # FOR LOGS_____________________________________________________________________________________
+    elements.append(PageBreak())
+    # hex_color = "#e8eefa"
+    # color = Color(*[int(hex_color[i:i+2], 16)/255.0 for i in (1, 3, 5)])
+    table_content_style_left_log = ParagraphStyle(name='table_content_left', alignment=TA_CENTER, fontSize=24)
+
+    left_logo = Image('static/uploads/ale.jpg', width=1*inch, height=1*inch)
+    right_logo = Image('static/uploads/ale.jpg', width=1*inch, height=1*inch)
+    centered_style = ParagraphStyle(name='centered', alignment=1, fontSize=18, fontName='Helvetica-Bold')
+    
+    header_data = [
+        [left_logo, Paragraph('New PDF', centered_style), right_logo]
+    ]
+    header_table = Table(header_data, colWidths=[2.5*inch, 2*inch, 2.5*inch])
+    header_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
+    ]))
+
+    # CREATE LINE
+    # drawing = Drawing(800, 100)  # width, height
+    # line = Line(-50, 50, 480, 50)  # x1, y1, x2, y2
+    # line.strokeColor = colors.gray  # Set warna garis
+    # drawing.add(line)
+    # elements.append(drawing)
+    # elements.append(Spacer(1, 12))
+    
+    # TITLE LOGS PAGE
+    log_title = Paragraph('Document History', table_content_style_left_log)
+    elements.append(log_title)
+    elements.append(Spacer(1, 28))
+
+    # PR LOGS TABLE HEADER
+    logs_table_header = [
+        # Paragraph('No', table_header_style),
+        Paragraph('Status', table_header_style),
+        Paragraph('Description', table_header_style),
+        Paragraph('IP Address', table_header_style),
+        Paragraph('Datetime', table_header_style)
+    ]
+
+    # Append header to table data
+    logs_table_data = [logs_table_header]
+
+    # Populate the table with pr_logs data
+    for index, log in enumerate(pr_logs):
+        if log[1] == 'SENT':
+            image = Image('static/entity_logo/sent.png', width=50, height=50)
+        elif log[1] == 'SIGNED':
+            image = Image('static/entity_logo/signed3.png', width=50, height=50)
+        elif log[1] == 'REJECTED':
+            image = Image('static/entity_logo/rejection.png', width=50, height=50)
+        else:
+            image = Image('static/entity_logo/done2.png', width=50, height=50)
+        logs_table_data.append([
+            # Paragraph(str(index + 1), table_content_style),
+            # Image('static/entity_logo/sent.png', width=50, height=50),
+            image,
+            # Paragraph(log[1], table_content_style),
+            Paragraph(log[2], table_content_style_left),
+            Paragraph(log[3], table_content_style),
+            Paragraph(log[4].strftime('%d %b %Y %H:%M:%S'), table_content_style)
+        ])
+
+    # Create table for logs
+    # logs_table = Table(logs_table_data, colWidths=[0.5*inch, 1.5*inch, 2.5*inch, 1.5*inch, 2*inch])
+    logs_table = Table(logs_table_data, colWidths=[1.5*inch, 2.5*inch, 1.5*inch, 2*inch])
+    logs_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.gray),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.white),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # Align content to the top
+    ]))
+    elements.append(logs_table)
+    # END LOGS
+
+    doc.build(elements)
+    doc.setTitle = "PR"
+
+    buffer.seek(0)
+
+    # COMBINE PDF FILES REFERENCES__________________________________________________________
+    main_pdf = PdfReader(buffer)
+    pdf_writer = PdfWriter()
+
+    # LIST PATH LOCATION
+    cur.execute('''
+        SELECT path
+        FROM pr_docs_reference pdr 
+        WHERE no_pr = %s
+    ''', (no_pr, ))
+
+    additional_paths = [os.path.join('static', row[0]) for row in cur.fetchall()]
+
+    cur.close()
+
+    # ADD ALL PAGES FROM MAIN PDF
+    for page_num in range(len(main_pdf.pages)):
+        pdf_writer.add_page(main_pdf.pages[page_num])
+
+    # CONVERT (JPG, JPEG, PNG) IMG FILES
+    def convert_image_to_pdf(image_path):
+        try:
+            img_buffer = BytesIO()
+            img_doc = SimpleDocTemplate(img_buffer, pagesize=A4)
+            elements = []
+
+            # CREATE IMG OBJECT
+            img = Image(image_path)
+            img_width, img_height = img.wrap(0, 0)
+
+            # SCALE IMG TO A4 PAPER
+            scale = min(A4[0] / img_width, A4[1] / img_height)
+            img.drawWidth = img_width * scale
+            img.drawHeight = img_height * scale
+
+            # ADD SLACE IMG TO ELEMENT LIST
+            elements.append(img)
+            
+            img_doc.build(elements)
+            img_buffer.seek(0)
+            print(f"Converted image {image_path} to PDF successfully.")
+            return img_buffer
+        except Exception as e:
+            print(f"Error converting image to PDF: {e}")
+            return None
+
+    # Add all pages from the additional files
+    for path in additional_paths:
+        print(f"Processing file: {path}")
+        if path.endswith('.pdf'):
+            try:
+                with open(path, "rb") as f:
+                    additional_pdf = PdfReader(f)
+                    for page_num in range(len(additional_pdf.pages)):
+                        pdf_writer.add_page(additional_pdf.pages[page_num])
+                print(f"Added pages from PDF file: {path}")
+            except Exception as e:
+                print(f"Error adding PDF file {path}: {e}")
+        elif path.endswith('.jpg') or path.endswith('.jpeg') or path.endswith('.png'):
+            image_pdf_buffer = convert_image_to_pdf(path)
+            if image_pdf_buffer:
+                image_pdf = PdfReader(image_pdf_buffer)
+                for page_num in range(len(image_pdf.pages)):
+                    pdf_writer.add_page(image_pdf.pages[page_num])
+                print(f"Added pages from image file: {path}")
+            else:
+                print(f"Skipping invalid image file: {path}")
+
+    # Write the combined PDF to a new buffer
+    combined_buffer = BytesIO()
+    pdf_writer.write(combined_buffer)
+    combined_buffer.seek(0)
+
+    print("Combined PDF generated successfully.")
+
+    # return send_file(buffer, as_attachment=False, download_name=f'{no_pr}_{today}.pdf', mimetype='application/pdf')
+    return send_file(combined_buffer, as_attachment=False, download_name=f'{no_pr}_{today}.pdf', mimetype='application/pdf')
+# ========================================================================================================================================

@@ -35,11 +35,12 @@
           </div>
           <!-- /.card-header -->
           <!-- form start -->
-          <form action="{{ url_for('user.register', user_id=user[0] if user else None) }}" method="post">
+          <form action="{{ url_for('user.register', encrypted_user_id=encrypt_id(user[0]) if user else None) }}" method="post">
             <div class="card-body">
               <div class="row">
                 <div class="col-md-3">
                   <div class="form-group">
+
                     <label for="username">Username</label>
                     <input type="text" class="form-control" id="username" name="username" value="{{ user[1] if user else '' }}" placeholder="Masukkan Username" autocomplete="off" required>
                   </div>
@@ -59,6 +60,7 @@
                       <option value="3" {% if user and user[4] == 3 %}selected{% endif %}>Officer</option>
                       <option value="4" {% if user and user[4] == 4 %}selected{% endif %}>Approval</option>
                     </select>
+                    
                   </div>
                 </div>
                 <div class="col-md-3" style="margin-left: 50px;">

@@ -46,6 +46,17 @@
                             </button>
                         </div>
                     </div>
+                </form>
+                <!-- Google Login Button -->
+                <div class="container-login100-form-btn">
+                    <a href="{{ url_for('auth.google_auth') }}">
+                    <button class="btn btn-light" style="border: 1px solid #ddd; display: flex; align-items: center; justify-content: center;">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/1/18/Gile_use.png" alt="Google Logo" width="20" height="20" style="margin-right: 10px;">
+                        Login with Google
+                    </button>
+                    </a>
+                </div>
+
                     <div class="text-center p-t-115">
                         <span class="txt1">
                             Don’t have an account?
@@ -54,7 +65,6 @@
                             Contact our IT Support
                         </a>
                     </div>
-                </form>
             </div>
         </div>
     </div>

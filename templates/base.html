@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ERP Tracker</title>
+  <title>OKein</title>
 
   <!-- Google Font: Source Sans Pro -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
@@ -80,7 +80,7 @@
             </button>
           <div class="dropdown-menu" role="menu">
             <a class="dropdown-item" href="{{url_for('auth.logout')}}">Logout</a>
-            <a class="dropdown-item" href="{{url_for('user.user_change_password', id=session.id)}}">User Settings</a>
+            <a class="dropdown-item" href="{{url_for('user.user_change_password', encrypted_user_id=encrypt_id(session.id))}}">User Settings</a>
              <!-- USER CHANGE PASSWORD HERE-->
           </div>
       </li>
@@ -128,7 +128,7 @@
     <!-- Brand Logo -->
     <a href="index3.html" class="brand-link">
       <img src="{{ url_for('static', filename='dist/img/v.png') }}" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
-      <span class="brand-text font-weight-light">ERPTracker</span>
+      <span class="brand-text font-weight-light">OKein</span>
     </a>
 
     <!-- Sidebar -->
@@ -322,3 +322,34 @@
 </script>
 </body>
 </html>
+<script>
+  // Waktu dalam milidetik (misalnya, 30 menit = 30 * 60 * 1000 ms) (untuk active pengguna agar tidak logout)
+  var timeout = 30 * 60 * 1000;
+  var timeoutHandle;
+
+  function resetTimer() {
+      clearTimeout(timeoutHandle);
+      timeoutHandle = setTimeout(logout, timeout);
+  }
+
+  function logout() {
+      // Kirimkan request ke backend Flask untuk mengakhiri sesi
+      window.location.href = "/auth.logout";
+  }
+
+  // Reset timer setiap kali ada aktivitas pengguna
+  window.onload = resetTimer;
+  document.onmousemove = resetTimer;
+  document.onkeypress = resetTimer;
+</script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          toastr.{{ category }}("{{ message | safe }}");
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  });
+</script>

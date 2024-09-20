@@ -7,31 +7,6 @@
 <!-- INHERETENCE CONTENT -->
 {% block content %}
 
-<!-- SCRIPT UNTUK COMA PADA NUMBER -->
-<script>
-  function formatNumber(num) {
-      return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  }
-
-  document.addEventListener('DOMContentLoaded', (event) => {
-      const input = document.getElementById('total_budget_approved');
-
-      input.addEventListener('input', (e) => {
-          let value = input.value.replace(/,/g, '');
-          if (!isNaN(value) && value !== '') {
-              input.value = formatNumber(value);
-          }
-      });
-
-      const form = document.querySelector('form');
-      form.addEventListener('submit', (e) => {
-          let value = input.value.replace(/,/g, '');
-          input.value = value;
-      });
-  });
-</script>
-<!-- END SCRIPT UNTUK COMA PADA NUMBER -->
-
 <!-- Content Wrapper. Contains page content -->
 <div class="content-wrapper">
   <!-- Content Header (Page header) -->
@@ -39,12 +14,12 @@
     <div class="container-fluid">
       <div class="row mb-2">
         <div class="col-sm-6">
-          <h1>Purchase Requisition</h1>
+          <h1>Waiver of Competition Form</h1>
         </div>
         <div class="col-sm-6">
           <ol class="breadcrumb float-sm-right">
             <li class="breadcrumb-item"><a href="#">Home</a></li>
-            <li class="breadcrumb-item active">PR Input</li>
+            <li class="breadcrumb-item active">WOC Input</li>
           </ol>
         </div>
       </div>
@@ -58,10 +33,10 @@
       <div class="col-md-12">
         <div class="card card-secondary">
           <div class="card-header">
-            <h3 class="card-title">PR INPUT</h3>
+            <h3 class="card-title">WOC INPUT</h3>
           </div>
           <div class="card-body">
-            <form action="{{ url_for('pr.pr_add') }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ url_for('woc.woc_add') }}" method="POST" enctype="multipart/form-data">
               <div class="row">
                 <div class="col-sm-3">
                   <div class="form-group">
@@ -87,8 +62,8 @@
                 </div>
                 <div class="col-sm-3">
                   <div class="form-group">
-                    <label for="no_pr">Nomor PR</label>
-                    <input type="text" name="no_pr" id="no_pr" class="form-control" disabled>
+                    <label for="no_woc">Nomor WOC</label>
+                    <input type="text" name="no_woc" id="no_woc" class="form-control" disabled>
                   </div>
                 </div>
               </div>
@@ -97,72 +72,41 @@
                   <div class="form-group">
                     <label>Date</label>
                     <div class="input-group date" id="reservationdate" data-target-input="nearest">
-                      <input type="date" name="tanggal_permintaan" class="form-control" />
+                      <input type="date" name="request_date" class="form-control" />
                       <div class="input-group-append" data-target="#reservationdate" data-toggle="">
                         <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                       </div>
                     </div>
                   </div>
                   <div class="form-group">
-                    <label for="nama_project">Nama Project</label>
-                    <input class="form-control" type="text" id="nama_project" name="nama_project" value="" required>
-                  </div>
-                  <div class="form-group">
-                    <label for="total_budget_approved">Total Budget Approved</label>
-                    <input class="form-control" type="text" id="total_budget_approved" name="total_budget_approved" required>
-                  </div>
+                    <label for="vendor">Vendor</label>
+                    <select class="form-control select2bs4" name="vendor" id="vendor" style="width: 100%;" required>
+                        <option value="">Select Vendor ...</option>
+                        {% for vendor in vendors %}
+                        <option value="{{ vendor[0] }}">
+                            {{ vendor[1] }}
+                        </option>
+                        {% endfor %}
+                    </select>
                 </div>
-              </div>
 
-              <!-- FORM PR DETAIL -->
-              <div class="card">
-                <div class="card-header">
-                  <h3 class="card-title">PR DETAIL INPUT</h3>
+                <div class="form-group">
+                  <label for="requester_name">Requester Name</label>
+                  <input class="form-control" type="text" id="requester_name" name="requester_name" placeholder="Enter ..." required>
+              </div>
+                
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <input class="form-control" type="text" id="description" name="description" placeholder="Enter ..." required>
                 </div>
-                <div class="card-body">
-                  <div style="margin-bottom: 10px;">
-                    <button type="button" class="btn btn-default" id="add-row" title="Add New Form">
-                      <i class="fas fa-plus"></i>
-                    </button>
-                  </div>
-                  <table class="table table-bordered" id="pr-detail-table">
-                    <thead>
-                      <tr>
-                        <th style="width: 10px">No</th>
-                        <th style="text-align: center;">Nama Barang / Jasa</th>
-                        <th style="text-align: center;">Spesifikasi Barang / Jasa (ukuran, merk, type, bahan)</th>
-                        <th style="text-align: center;">QTY</th>
-                        <th style="text-align: center;">Date Required</th>
-                        <th style="width: 90px; text-align: center;">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>1.</td>
-                        <td style="width: 300px">
-                          <input class="form-control" type="text" name="nama_item1" required placeholder="Enter ...">
-                        </td>
-                        <td><textarea class="form-control" rows="3" id="spesifikasi1" name="spesifikasi1" placeholder="Enter ..."></textarea></td>
-                        <td style="width: 120px">
-                          <input class="form-control" type="number" id="qty1" name="qty1" value="" required placeholder="Enter ...">
-                        </td>
-                        <td style="width: 220px">
-                          <div class="input-group date" id="tanggal1" data-target-input="nearest">
-                            <input type="date" name="tanggal1" class="form-control" />
-                            <div class="input-group-append" data-target="#reservationdate" data-toggle="">
-                              <div class="input-group-text"><i class="fa fa-calendar"></i></div>
-                            </div>
-                          </div>
-                        </td>
-                        <td style="text-align: center;">
-                          <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete PR">
-                            <i class="fa fa-trash"></i>
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                
+                <div class="form-group">
+                    <label for="reason">Reason</label>
+                    <input class="form-control" type="text" id="reason" name="reason" placeholder="Enter ..." required>
                 </div>
+                </div>
+                </div>
+
 
                 <!-- FORM APPROVAL & UPLOAD DOCUMENTS -->
                 <div class="row">
@@ -206,7 +150,7 @@
                     </div>
                   </div>
 
-                  <div class="col-sm-6">
+                  <!-- <div class="col-sm-6">
                     <div class="card-header">
                       <h3 class="card-title">UPLOAD DOCUMENTS</h3>
                     </div>
@@ -245,12 +189,12 @@
                       </table>
                     </div>
                     </div>
-                  </div>
+                  </div> -->
                 </div>
-
+              </div>
                 <div class="card-footer clearfix">
                   <button type="submit" class="btn btn-secondary">Submit</button>
-                  <a href="{{ url_for('pr.pr_list') }}" class="btn btn-danger" title="Back">Back</a>
+                  <a href="{{ url_for('woc.woc_list') }}" class="btn btn-danger" title="Back">Back</a>
                 </div>
               </div>
             </form>
@@ -276,32 +220,6 @@
         });
       });
     }
-
-    $("#add-row").click(function() {
-      const rowNumber = $("#pr-detail-table tbody tr").length + 1;
-      const newRow = `
-      <tr>
-        <td>${rowNumber}.</td>
-        <td style="width: 300px"><input class="form-control" type="text" name="nama_item${rowNumber}" required placeholder="Enter ..."></td>
-        <td><textarea class="form-control" rows="3" name="spesifikasi${rowNumber}" placeholder="Enter ..."></textarea></td>
-        <td style="width: 120px"><input class="form-control" type="number" name="qty${rowNumber}" required placeholder="Enter ..."></td>
-        <td style="width: 220px">
-          <div class="input-group date" id="tanggal${rowNumber}" data-target-input="nearest">
-            <input type="date" name="tanggal${rowNumber}" class="form-control" />
-            <div class="input-group-append" data-target="#reservationdate${rowNumber}" data-toggle="">
-              <div class="input-group-text"><i class="fa fa-calendar"></i></div>
-            </div>
-          </div>
-        </td>
-        <td style="text-align: center;">
-          <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Delete PR">
-            <i class="fa fa-trash"></i>
-          </button>
-        </td>
-      </tr>`;
-      $("#pr-detail-table tbody").append(newRow);
-      updateRowNumbers("#pr-detail-table");
-    });
 
     // Menambahkan baris baru
     $("#add-approval").click(function() {
@@ -336,12 +254,6 @@
         });
     }
 
-    // Menghapus baris dan memperbarui nomor baris
-    // $(document).on('click', '.delete-row', function() {
-    //     $(this).closest('tr').remove();
-    //     updateRowNumbers("#approval-table");
-    // });
-
       $("#add-upload").click(function() {
         const rowNumber = $("#upload-table tbody tr").length + 1;
         const newRow = `
@@ -363,47 +275,29 @@
         updateRowNumbers("#upload-table");
       });
 
-    // Preview upload documents
-    // $(document).on('change', 'input[type="file"]', function() {
-    //   const fileInput = $(this)[0];
-    //   const fileName = fileInput.files[0].name;
-    //   const fileReader = new FileReader();
-    //   fileReader.onload = function(e) {
-    //     const fileURL = e.target.result;
-    //     const previewHTML = `
-    //       <div class="file-preview">
-    //         <p>${fileName}</p>
-    //         <img src="${fileURL}" alt="File Preview" class="img-fluid" style="max-height: 100px;">
-    //       </div>`;
-    //     $(fileInput).closest('td').append(previewHTML);
-    //   };
-    //   fileReader.readAsDataURL(fileInput.files[0]);
-    // });
-
     $(document).on("click", ".delete-row", function() {
       $(this).closest("tr").remove();
-      updateRowNumbers("#pr-detail-table");
       updateRowNumbers("#approval-table");
       updateRowNumbers("#upload-table");
     });
 
-    function updatePRNumber() {
+    function updateWOCNumber() {
       const entity = $('#entity').val();
       const department = $('#department').val();
       if (entity && department) {
         $.ajax({
-          url: '/generate_pr',
+          url: '/generate_woc',
           method: 'POST',
           contentType: 'application/json',
           data: JSON.stringify({ entity: entity, department: department }),
           success: function(response) {
-            $('#no_pr').val(response.pr_number);
+            $('#no_woc').val(response.woc_number);
           }
         });
       }
     }
 
-    $('#entity, #department').change(updatePRNumber);
+    $('#entity, #department').change(updateWOCNumber);
   });
 </script>
 
@@ -432,5 +326,30 @@
     }
   }
 </script>
+
+
+<!-- <script>
+  document.getElementById('currency').addEventListener('change', function() {
+      var currency = this.value;
+      var amountInput = document.getElementById('amount');
+  
+      amountInput.value = ''; // Reset amount value
+  
+      amountInput.addEventListener('input', function() {
+          var value = parseFloat(amountInput.value.replace(/[^0-9.-]+/g, '')) || 0;
+  
+          if (currency === 'IDR') {
+              amountInput.value = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(value);
+          } else if (currency === 'USD') {
+              amountInput.value = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+          } else if (currency === 'CNY') { // Assuming Yuan is represented as CNY
+              amountInput.value = new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(value);
+          } else {
+              amountInput.value = value; // Default to plain number if no match
+          }
+      });
+  });
+  </script> -->
+  
 {% endblock %}
 <!-- END INHERETENCE CONTENT -->
