@@ -50,10 +50,14 @@ def login():
             # logging.basicConfig(level=logging.DEBUG)
             # logging.debug(f"Next URL URL URL URL URL URL URL URL URL: {next_url}")
             return redirect(next_url or url_for('index'))
-            # return f'{next_url}'
+            # return f'{next_url}' 
     return render_template('auth/login.html')
 
 
+<<<<<<< HEAD
+# ==============================================================================================================
+=======
+>>>>>>> parent of 15f364b (enhance PRF WOC USER new udpate 20240920)
 # LOGOUT
 @auth_blueprint.route('/logout')
 def logout():
@@ -61,4 +65,4 @@ def logout():
     session.pop('username', None)
     session.pop('level', None)
     session.pop('email', None)
-    return redirect(url_for('auth.login'))
+    return redirect(url_for('auth.login')) 
